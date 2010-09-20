@@ -108,8 +108,7 @@ struct FillAction: UnaryAction<FillAction> {
 
 struct EqualsAction: BinaryAction<EqualsAction> {
 	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
-		HandleScope scope;
-		return scope.Close(Boolean::New(compare(a, b)));
+		return compare(a, b) == 0 ? True() : False();
 	}
 };
 
@@ -132,7 +131,7 @@ Handle<Value> Fill(const Arguments& args) {
 }
 
 Handle<Value> Equals(const Arguments& args) {
-	return CompareAction()(args);
+	return EqualsAction()(args);
 }
 
 Handle<Value> Compare(const Arguments& args) {
