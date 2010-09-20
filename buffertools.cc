@@ -10,16 +10,15 @@ using namespace node;
 namespace {
 
 // this is an application of the Curiously Recurring Template Pattern
-template <class T> struct Action {
-  void apply(Buffer& buffer, const Arguments& args);
+template <class T> struct UnaryAction {
+  Handle<Value> apply(Buffer& buffer, const Arguments& args);
 
   Handle<Value> operator()(const Arguments& args) {
     if (args[0]->IsObject()) {
       Local<Object> object = args[0]->ToObject();
       if (Buffer::HasInstance(object)) {
         Buffer& buffer = *ObjectWrap::Unwrap<Buffer>(object);
-        static_cast<T*>(this)->apply(buffer, args);
-        return buffer.handle_;
+        return static_cast<T*>(this)->apply(buffer, args);
       }
     }
     // XXX throw TypeError
@@ -27,10 +26,50 @@ template <class T> struct Action {
   }
 };
 
-struct ClearAction: Action<ClearAction> {
-  void apply(Buffer& buffer, const Arguments& args) {
+template <class T> struct BinaryAction {
+  Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args);
+
+  Handle<Value> operator()(const Arguments& args) {
+    if (args[0]->IsObject() && args[1]->IsObject()) {
+      Local<Object> arg0 = args[0]->ToObject();
+      Local<Object> arg1 = args[0]->ToObject();
+      if (Buffer::HasInstance(arg0) && Buffer::HasInstance(arg1)) {
+        Buffer& a = *ObjectWrap::Unwrap<Buffer>(arg0);
+        Buffer& b = *ObjectWrap::Unwrap<Buffer>(arg1);
+        return static_cast<T*>(this)->apply(a, b, args);
+      }
+    }
+    // XXX throw TypeError
+    return Undefined();
+  }
+};
+
+struct ClearAction: UnaryAction<ClearAction> {
+  Handle<Value> apply(Buffer& buffer, const Arguments& args) {
     const int c = args[1]->IsInt32() ? args[1]->ToInt32()->Int32Value() : 0;
     memset(buffer.data(), c, buffer.length());
+    return buffer.handle_;
+  }
+};
+
+int compare(Buffer& a, Buffer& b) {
+  if (a.length() != b.length()) {
+    return a.length() > b.length() ? 1 : -1;
+  }
+  return memcmp(a.data(), b.data(), a.length());
+}
+
+struct EqualsAction: BinaryAction<EqualsAction> {
+  Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
+    HandleScope scope;
+    return scope.Close(Boolean::New(compare(a, b)));
+  }
+};
+
+struct CompareAction: BinaryAction<CompareAction> {
+  Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
+    HandleScope scope;
+    return scope.Close(Integer::New(compare(a, b)));
   }
 };
 
@@ -38,10 +77,20 @@ Handle<Value> Clear(const Arguments& args) {
   return ClearAction()(args);
 }
 
+Handle<Value> Equals(const Arguments& args) {
+  return CompareAction()(args);
+}
+
+Handle<Value> Compare(const Arguments& args) {
+  return CompareAction()(args);
+}
+
 extern "C" void init(Handle<Object> target) {
   HandleScope scope;
 
   target->Set(String::New("clear"), FunctionTemplate::New(Clear)->GetFunction());
+  target->Set(String::New("equals"), FunctionTemplate::New(Equals)->GetFunction());
+  target->Set(String::New("compare"), FunctionTemplate::New(Compare)->GetFunction());
 }
 
 }
