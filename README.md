@@ -50,6 +50,7 @@ some buffers' feelings.
 
 ## TODO
 
+* Buffers and strings should mostly be interchangeable as arguments to methods.
 * Extend Buffer.prototype with buffertools methods.
 * Logical operations on buffers (AND, OR, XOR).
 * Add indexOf() and lastIndexOf() functions.
