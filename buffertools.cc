@@ -32,7 +32,7 @@ template <class T> struct BinaryAction {
 	Handle<Value> operator()(const Arguments& args) {
 		if (args[0]->IsObject() && args[1]->IsObject()) {
 			Local<Object> arg0 = args[0]->ToObject();
-			Local<Object> arg1 = args[0]->ToObject();
+			Local<Object> arg1 = args[1]->ToObject();
 			if (Buffer::HasInstance(arg0) && Buffer::HasInstance(arg1)) {
 				Buffer& a = *ObjectWrap::Unwrap<Buffer>(arg0);
 				Buffer& b = *ObjectWrap::Unwrap<Buffer>(arg1);
