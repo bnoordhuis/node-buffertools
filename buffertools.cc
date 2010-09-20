@@ -21,8 +21,8 @@ template <class T> struct UnaryAction {
         return static_cast<T*>(this)->apply(buffer, args);
       }
     }
-    // XXX throw TypeError
-    return Undefined();
+    static Persistent<String> notBufferError = Persistent<String>::New(String::New("First argument should be a buffer."));
+    return ThrowException(Exception::TypeError(notBufferError));
   }
 };
 
@@ -39,8 +39,8 @@ template <class T> struct BinaryAction {
         return static_cast<T*>(this)->apply(a, b, args);
       }
     }
-    // XXX throw TypeError
-    return Undefined();
+    static Persistent<String> notBufferError = Persistent<String>::New(String::New("First and second argument should be a buffer."));
+    return ThrowException(Exception::TypeError(notBufferError));
   }
 };
 
