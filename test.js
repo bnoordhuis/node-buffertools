@@ -31,3 +31,8 @@ assert.equal(b.inspect(), '<Buffer 61 62 61 62>');
 b = new Buffer(4);
 assert.equal(b, buffertools.fill(b, 'abcd1234'));
 assert.equal(b.inspect(), '<Buffer 61 62 63 64>');
+
+b = new Buffer('Hello, world!');
+assert.equal(-1, buffertools.indexOf(b, new Buffer('foo')));
+assert.equal(0,  buffertools.indexOf(b, new Buffer('Hell')));
+assert.equal(7,  buffertools.indexOf(b, new Buffer('world')));

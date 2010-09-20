@@ -119,6 +119,17 @@ struct CompareAction: BinaryAction<CompareAction> {
 	}
 };
 
+struct IndexOfAction: BinaryAction<IndexOfAction> {
+	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
+		HandleScope scope;
+		// FIXME memmem is a GNU extension
+		const char* p = (const char*) memmem(a.data(), a.length(), b.data(), b.length());
+		// FIXME ptrdiff_t may be larger than the range of a JS integer
+		const ptrdiff_t offset = p ? p - a.data() : -1;
+		return scope.Close(Integer::New(offset));
+	}
+};
+
 //
 // V8 function callbacks
 //
@@ -138,12 +149,17 @@ Handle<Value> Compare(const Arguments& args) {
 	return CompareAction()(args);
 }
 
+Handle<Value> IndexOf(const Arguments& args) {
+	return IndexOfAction()(args);
+}
+
 extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
 	target->Set(String::New("fill"), FunctionTemplate::New(Fill)->GetFunction());
 	target->Set(String::New("clear"), FunctionTemplate::New(Clear)->GetFunction());
 	target->Set(String::New("equals"), FunctionTemplate::New(Equals)->GetFunction());
 	target->Set(String::New("compare"), FunctionTemplate::New(Compare)->GetFunction());
+	target->Set(String::New("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
 }
 
 }

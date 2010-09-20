@@ -48,6 +48,11 @@ the same binary data.
 Smaller buffers are considered to be less than larger ones. This has hurt
 some buffers' feelings.
 
+### buffertools.indexOf(a, b)
+
+Find the first occurrence of buffer __b__ in buffer __a__. Returns the
+zero-based index or -1 if there is no match.
+
 ## TODO
 
 * Buffers and strings should mostly be interchangeable as arguments to methods.
