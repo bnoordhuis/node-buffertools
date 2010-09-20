@@ -45,4 +45,5 @@ if a < b, zero if a == b or a number larger than 1 if a > b.
 
 * Extend Buffer.prototype with buffertools methods.
 * Logical operations on buffers (AND, OR, XOR).
+* Add indexOf() and lastIndexOf() functions.
 * bin2hex and hex2bin functionality.
