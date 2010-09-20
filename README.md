@@ -15,7 +15,7 @@ Now you can include the module in your project.
 
 ## Methods
 
-The API still in flux but here are the goodies so far.
+The API is still in flux but here are the goodies so far.
 
 ### buffertools.clear(buffer)
 
@@ -30,6 +30,7 @@ Returns the buffer object so you can chain calls.
 ### buffertools.equals(a, b)
 
 Returns true if the first buffer equals the second one, false otherwise.
+
 Buffers are considered equal when they are of the same length and contain
 the same binary data.
 
@@ -38,8 +39,14 @@ in the buffers, they will most likely *not* be equal.
 
 ### buffertools.compare(a, b)
 
-Lexicographically compare the two buffers. Returns a number smaller than 1
+Lexicographically compare two buffers. Returns a number smaller than 1
 if a < b, zero if a == b or a number larger than 1 if a > b.
+
+Buffers are considered equal when they are of the same length and contain
+the same binary data.
+
+Smaller buffers are considered to be less than larger ones. This has hurt
+some buffers' feelings.
 
 ## TODO
 
