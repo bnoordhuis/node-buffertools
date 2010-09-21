@@ -7,10 +7,15 @@ assert.throws(function() { buffertools.equals({}, {}); });
 a = new Buffer('abcd'), b = new Buffer('abcd'),  c = new Buffer('efgh');
 assert.ok(buffertools.equals(a, b));
 assert.ok(!buffertools.equals(a, c));
+assert.ok(buffertools.equals(a, 'abcd'));
+assert.ok(!buffertools.equals(a, 'efgh'));
 
 assert.ok(buffertools.compare(a, b) == 0);
 assert.ok(buffertools.compare(a, c) < 0);
 assert.ok(buffertools.compare(c, a) > 0);
+assert.ok(buffertools.compare(a, 'abcd') == 0);
+assert.ok(buffertools.compare(a, 'efgh') < 0);
+assert.ok(buffertools.compare(c, 'abcd') > 0);
 
 b = new Buffer('****');
 assert.equal(b, buffertools.clear(b));
@@ -36,3 +41,6 @@ b = new Buffer('Hello, world!');
 assert.equal(-1, buffertools.indexOf(b, new Buffer('foo')));
 assert.equal(0,  buffertools.indexOf(b, new Buffer('Hell')));
 assert.equal(7,  buffertools.indexOf(b, new Buffer('world')));
+assert.equal(-1, buffertools.indexOf(b, 'foo'));
+assert.equal(0,  buffertools.indexOf(b, 'Hell'));
+assert.equal(7,  buffertools.indexOf(b, 'world'));

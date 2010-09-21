@@ -9,37 +9,52 @@ using namespace node;
 
 namespace {
 
+Buffer* unwrapBuffer(Local<Value> value) {
+  if (value->IsObject() && Buffer::HasInstance(value)) {
+    return Buffer::Unwrap<Buffer>(value->ToObject());
+  }
+  return 0;
+}
+
 // this is an application of the Curiously Recurring Template Pattern
-template <class T> struct UnaryAction {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args);
+template <class Derived> struct UnaryAction {
+	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
-		if (args[0]->IsObject()) {
-			Local<Object> object = args[0]->ToObject();
-			if (Buffer::HasInstance(object)) {
-				Buffer& buffer = *ObjectWrap::Unwrap<Buffer>(object);
-				return static_cast<T*>(this)->apply(buffer, args);
-			}
+		Buffer* buffer = unwrapBuffer(args[0]);
+		if (buffer != 0) {
+			HandleScope scope;
+			return static_cast<Derived*>(this)->apply(*buffer, args, scope);
 		}
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New("First argument should be a buffer."));
 		return ThrowException(Exception::TypeError(illegalArgumentException));
 	}
 };
 
-template <class T> struct BinaryAction {
-	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args);
+template <class Derived> struct BinaryAction {
+	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
-		if (args[0]->IsObject() && args[1]->IsObject()) {
-			Local<Object> arg0 = args[0]->ToObject();
-			Local<Object> arg1 = args[1]->ToObject();
-			if (Buffer::HasInstance(arg0) && Buffer::HasInstance(arg1)) {
-				Buffer& a = *ObjectWrap::Unwrap<Buffer>(arg0);
-				Buffer& b = *ObjectWrap::Unwrap<Buffer>(arg1);
-				return static_cast<T*>(this)->apply(a, b, args);
-			}
+		Buffer* a = unwrapBuffer(args[0]);
+		if (a == 0) {
+			static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
+					"First argument must be a buffer."));
+			return ThrowException(Exception::TypeError(illegalArgumentException));
 		}
-		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New("First and second argument should be a buffer."));
+
+		HandleScope scope;
+		if (args[1]->IsString()) {
+			String::AsciiValue s(args[1]->ToString());
+			return static_cast<Derived*>(this)->apply(*a, *s, s.length(), args, scope);
+		}
+
+		Buffer* b = unwrapBuffer(args[1]);
+		if (b != 0) {
+			return static_cast<Derived*>(this)->apply(*a, b->data(), b->length(), args, scope);
+		}
+
+		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
+				"Second argument must be a string or a buffer."));
 		return ThrowException(Exception::TypeError(illegalArgumentException));
 	}
 };
@@ -66,40 +81,40 @@ Handle<Value> fill(Buffer& buffer, void* pattern, size_t size) {
 	return buffer.handle_;
 }
 
-int compare(Buffer& a, Buffer& b) {
-	if (a.length() != b.length()) {
-		return a.length() > b.length() ? 1 : -1;
+int compare(Buffer& a, const char* data, size_t length) {
+	if (a.length() != length) {
+		return a.length() > length ? 1 : -1;
 	}
-	return memcmp(a.data(), b.data(), a.length());
+	return memcmp(a.data(), data, length);
 }
 
 //
 // actions
 //
 struct ClearAction: UnaryAction<ClearAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args) {
+	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
 		const int c = args[1]->IsInt32() ? args[1]->ToInt32()->Int32Value() : 0;
 		return clear(buffer, c);
 	}
 };
 
 struct FillAction: UnaryAction<FillAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args) {
+	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
 		if (args[1]->IsInt32()) {
 			int c = args[1]->ToInt32()->Int32Value();
 			return clear(buffer, c);
 		}
+
 		if (args[1]->IsString()) {
 			String::AsciiValue s(args[1]->ToString());
 			return fill(buffer, *s, s.length());
 		}
-		if (args[1]->IsObject()) {
-			Local<Object> o = args[1]->ToObject();
-			if (Buffer::HasInstance(o)) {
-				Buffer& src = *Buffer::Unwrap<Buffer>(o);
-				return fill(buffer, src.data(), src.length());
-			}
+
+		Buffer* other = unwrapBuffer(args[1]);
+		if (other != 0) {
+			return fill(buffer, other->data(), other->length());
 		}
+
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
 				"Second argument should be either a string, a buffer or an integer."));
 		return ThrowException(Exception::TypeError(illegalArgumentException));
@@ -107,25 +122,23 @@ struct FillAction: UnaryAction<FillAction> {
 };
 
 struct EqualsAction: BinaryAction<EqualsAction> {
-	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
-		return compare(a, b) == 0 ? True() : False();
+	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+		return compare(buffer, data, size) == 0 ? True() : False();
 	}
 };
 
 struct CompareAction: BinaryAction<CompareAction> {
-	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
-		HandleScope scope;
-		return scope.Close(Integer::New(compare(a, b)));
+	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+		return scope.Close(Integer::New(compare(buffer, data, size)));
 	}
 };
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
-	Handle<Value> apply(Buffer& a, Buffer& b, const Arguments& args) {
-		HandleScope scope;
+	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
 		// FIXME memmem is a GNU extension
-		const char* p = (const char*) memmem(a.data(), a.length(), b.data(), b.length());
+		const char* p = (const char*) memmem(buffer.data(), buffer.length(), data, size);
 		// FIXME ptrdiff_t may be larger than the range of a JS integer
-		const ptrdiff_t offset = p ? p - a.data() : -1;
+		const ptrdiff_t offset = p ? p - buffer.data() : -1;
 		return scope.Close(Integer::New(offset));
 	}
 };
