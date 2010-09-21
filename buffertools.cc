@@ -9,25 +9,13 @@ using namespace node;
 
 namespace {
 
-Buffer* unwrapBuffer(Local<Value> value) {
-	if (Buffer::HasInstance(value)) {
-		return Buffer::Unwrap<Buffer>(value->ToObject());
-	}
-	return 0;
-}
-
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
 	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
-		Buffer* buffer = unwrapBuffer(args[0]);
-		if (buffer != 0) {
-			HandleScope scope;
-			return static_cast<Derived*>(this)->apply(*buffer, args, scope);
-		}
-		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New("First argument should be a buffer."));
-		return ThrowException(Exception::TypeError(illegalArgumentException));
+		HandleScope scope;
+		return static_cast<Derived*>(this)->apply(*Buffer::Unwrap<Buffer>(args.This()), args, scope);
 	}
 };
 
@@ -35,22 +23,16 @@ template <class Derived> struct BinaryAction {
 	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
-		Buffer* a = unwrapBuffer(args[0]);
-		if (a == 0) {
-			static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
-					"First argument must be a buffer."));
-			return ThrowException(Exception::TypeError(illegalArgumentException));
-		}
-
 		HandleScope scope;
-		if (args[1]->IsString()) {
-			String::AsciiValue s(args[1]->ToString());
-			return static_cast<Derived*>(this)->apply(*a, *s, s.length(), args, scope);
-		}
 
-		Buffer* b = unwrapBuffer(args[1]);
-		if (b != 0) {
-			return static_cast<Derived*>(this)->apply(*a, b->data(), b->length(), args, scope);
+		Buffer& buffer = *Buffer::Unwrap<Buffer>(args.This());
+		if (args[0]->IsString()) {
+			String::AsciiValue s(args[0]->ToString());
+			return static_cast<Derived*>(this)->apply(buffer, *s, s.length(), args, scope);
+		}
+		if (Buffer::HasInstance(args[0])) {
+			Buffer& other = *Buffer::Unwrap<Buffer>(args[0]->ToObject());
+			return static_cast<Derived*>(this)->apply(buffer, other.data(), other.length(), args, scope);
 		}
 
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
@@ -93,26 +75,25 @@ int compare(Buffer& a, const char* data, size_t length) {
 //
 struct ClearAction: UnaryAction<ClearAction> {
 	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
-		const int c = args[1]->IsInt32() ? args[1]->ToInt32()->Int32Value() : 0;
-		return clear(buffer, c);
+		return clear(buffer, 0);
 	}
 };
 
 struct FillAction: UnaryAction<FillAction> {
 	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
-		if (args[1]->IsInt32()) {
-			int c = args[1]->ToInt32()->Int32Value();
+		if (args[0]->IsInt32()) {
+			int c = args[0]->ToInt32()->Int32Value();
 			return clear(buffer, c);
 		}
 
-		if (args[1]->IsString()) {
-			String::AsciiValue s(args[1]->ToString());
+		if (args[0]->IsString()) {
+			String::AsciiValue s(args[0]->ToString());
 			return fill(buffer, *s, s.length());
 		}
 
-		Buffer* other = unwrapBuffer(args[1]);
-		if (other != 0) {
-			return fill(buffer, other->data(), other->length());
+		if (Buffer::HasInstance(args[0])) {
+			Buffer& other = *Buffer::Unwrap<Buffer>(args[0]->ToObject());
+			return fill(buffer, other.data(), other.length());
 		}
 
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
@@ -168,11 +149,13 @@ Handle<Value> IndexOf(const Arguments& args) {
 
 extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
-	target->Set(String::New("fill"), FunctionTemplate::New(Fill)->GetFunction());
-	target->Set(String::New("clear"), FunctionTemplate::New(Clear)->GetFunction());
-	target->Set(String::New("equals"), FunctionTemplate::New(Equals)->GetFunction());
-	target->Set(String::New("compare"), FunctionTemplate::New(Compare)->GetFunction());
-	target->Set(String::New("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+
+	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
+	proto->Set(String::New("fill"), FunctionTemplate::New(Fill)->GetFunction());
+	proto->Set(String::New("clear"), FunctionTemplate::New(Clear)->GetFunction());
+	proto->Set(String::New("equals"), FunctionTemplate::New(Equals)->GetFunction());
+	proto->Set(String::New("compare"), FunctionTemplate::New(Compare)->GetFunction());
+	proto->Set(String::New("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
 }
 
 }
