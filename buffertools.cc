@@ -10,10 +10,10 @@ using namespace node;
 namespace {
 
 Buffer* unwrapBuffer(Local<Value> value) {
-  if (value->IsObject() && Buffer::HasInstance(value)) {
-    return Buffer::Unwrap<Buffer>(value->ToObject());
-  }
-  return 0;
+	if (Buffer::HasInstance(value)) {
+		return Buffer::Unwrap<Buffer>(value->ToObject());
+	}
+	return 0;
 }
 
 // this is an application of the Curiously Recurring Template Pattern
