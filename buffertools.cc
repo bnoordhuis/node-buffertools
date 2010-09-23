@@ -151,11 +151,11 @@ extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
 
 	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
-	proto->Set(String::New("fill"), FunctionTemplate::New(Fill)->GetFunction());
-	proto->Set(String::New("clear"), FunctionTemplate::New(Clear)->GetFunction());
-	proto->Set(String::New("equals"), FunctionTemplate::New(Equals)->GetFunction());
-	proto->Set(String::New("compare"), FunctionTemplate::New(Compare)->GetFunction());
-	proto->Set(String::New("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+	proto->Set(String::NewSymbol("fill"), FunctionTemplate::New(Fill)->GetFunction());
+	proto->Set(String::NewSymbol("clear"), FunctionTemplate::New(Clear)->GetFunction());
+	proto->Set(String::NewSymbol("equals"), FunctionTemplate::New(Equals)->GetFunction());
+	proto->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
+	proto->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
 }
 
 }
