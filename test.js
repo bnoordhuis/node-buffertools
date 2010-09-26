@@ -45,3 +45,6 @@ assert.equal(7,  b.indexOf(new Buffer('world')));
 assert.equal(-1, b.indexOf('foo'));
 assert.equal(0,  b.indexOf('Hell'));
 assert.equal(7,  b.indexOf('world'));
+
+b = new Buffer("\t \r\n");
+assert.equal('09200d0a', b.toHex());

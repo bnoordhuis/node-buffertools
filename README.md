@@ -55,6 +55,10 @@ some buffers' feelings.
 Search this buffer for the first occurrence of the argument.
 Returns the zero-based index or -1 if there is no match.
 
+### Buffer.toHex()
+
+Returns the contents of the buffer encoded as a hexadecimal string.
+
 ## TODO
 
 * Logical operations on buffers (AND, OR, XOR).

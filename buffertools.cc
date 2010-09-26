@@ -3,6 +3,7 @@
 #include <node_buffer.h>
 
 #include <cstring>
+#include <string>
 
 using namespace v8;
 using namespace node;
@@ -124,6 +125,21 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
 	}
 };
 
+static char hexadecimal[] = "0123456789abcdef";
+
+struct ToHexAction: UnaryAction<ToHexAction> {
+	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
+		size_t size = buffer.length();
+		std::string s(size * 2, 0);
+		for (size_t i = 0; i < size; ++i) {
+			const int c = buffer.data()[i];
+			s[i * 2] = hexadecimal[c >> 4];
+			s[i * 2 + 1] = hexadecimal[c & 15];
+		}
+		return scope.Close(String::New(s.c_str(), s.size()));
+	}
+};
+
 //
 // V8 function callbacks
 //
@@ -147,6 +163,10 @@ Handle<Value> IndexOf(const Arguments& args) {
 	return IndexOfAction()(args);
 }
 
+Handle<Value> ToHex(const Arguments& args) {
+	return ToHexAction()(args);
+}
+
 extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
 
@@ -156,6 +176,7 @@ extern "C" void init(Handle<Object> target) {
 	proto->Set(String::NewSymbol("equals"), FunctionTemplate::New(Equals)->GetFunction());
 	proto->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
 	proto->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+	proto->Set(String::NewSymbol("toHex"), FunctionTemplate::New(ToHex)->GetFunction());
 }
 
 }
