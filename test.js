@@ -48,3 +48,4 @@ assert.equal(7,  b.indexOf('world'));
 
 b = new Buffer("\t \r\n");
 assert.equal('09200d0a', b.toHex());
+assert.equal(b.inspect(), new Buffer('09200d0a').fromHex().inspect());

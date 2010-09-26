@@ -57,7 +57,13 @@ Returns the zero-based index or -1 if there is no match.
 
 ### Buffer.toHex()
 
-Returns the contents of the buffer encoded as a hexadecimal string.
+Returns the contents of this buffer encoded as a hexadecimal string.
+
+### Buffer.fromHex()
+
+Assumes this buffer contains hexadecimal data (packed, no whitespace)
+and decodes it into binary data. Returns a new buffer with the decoded
+content. Throws an exception if non-hexadecimal data is encountered.
 
 ## TODO
 
