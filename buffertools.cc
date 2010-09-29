@@ -5,6 +5,8 @@
 #include <cstring>
 #include <string>
 
+#include "BoyerMoore.h"
+
 using namespace v8;
 using namespace node;
 
@@ -117,9 +119,7 @@ struct CompareAction: BinaryAction<CompareAction> {
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
 	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
-		// FIXME memmem is a GNU extension
-		const char* p = (const char*) memmem(buffer.data(), buffer.length(), data, size);
-		// FIXME ptrdiff_t may be larger than the range of a JS integer
+		const char* p = BoyerMoore(buffer.data(), buffer.length(), data, size);
 		const ptrdiff_t offset = p ? p - buffer.data() : -1;
 		return scope.Close(Integer::New(offset));
 	}
