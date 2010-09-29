@@ -12,14 +12,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char *BoyerMoore( const char *data, unsigned int dataLength, const char *string, unsigned int strLength )
+static inline const char *BoyerMoore( const char *data, unsigned int dataLength, const char *string, unsigned int strLength )
 {
+	if (strLength == 0)
+		return NULL;
+
+	if (strLength == 1)
+		return (const char *) memchr(data, *string, dataLength);
+
 	unsigned int skipTable[256], i;
 	const char *search;
 	char lastChar;
-
-	if (strLength == 0)
-		return NULL;
 
 	// Initialize skip lookup table
 	for (i = 0; i < 256; i++)
@@ -68,7 +71,7 @@ static char *BoyerMoore( const char *data, unsigned int dataLength, const char *
 		{
 			// Have we found the entire string?
 			if (i-- == 0)
-				return (char *) search;
+				return search;
 		} while (*--search == string[i]);
 
 		// Skip past the part of the string that we scanned already
