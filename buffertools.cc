@@ -29,7 +29,7 @@ template <class Derived> struct BinaryAction {
 
 		Buffer& buffer = *Buffer::Unwrap<Buffer>(args.This());
 		if (args[0]->IsString()) {
-			String::AsciiValue s(args[0]->ToString());
+			String::Utf8Value s(args[0]->ToString());
 			return static_cast<Derived*>(this)->apply(buffer, *s, s.length(), args, scope);
 		}
 		if (Buffer::HasInstance(args[0])) {
@@ -89,7 +89,7 @@ struct FillAction: UnaryAction<FillAction> {
 		}
 
 		if (args[0]->IsString()) {
-			String::AsciiValue s(args[0]->ToString());
+			String::Utf8Value s(args[0]->ToString());
 			return fill(buffer, *s, s.length());
 		}
 
