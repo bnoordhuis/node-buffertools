@@ -65,6 +65,13 @@ Assumes this buffer contains hexadecimal data (packed, no whitespace)
 and decodes it into binary data. Returns a new buffer with the decoded
 content. Throws an exception if non-hexadecimal data is encountered.
 
+### buffertools.concat(a, b, c, ...)
+
+Concatenate two or more buffers/strings. Example:
+
+    // identical to new Buffer('foobarbaz')
+    buffertools.concat('foo', new Buffer('bar'), 'baz');
+
 ## TODO
 
 * Logical operations on buffers (AND, OR, XOR).

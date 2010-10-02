@@ -2,6 +2,7 @@
 #include <node.h>
 #include <node_buffer.h>
 
+#include <sstream>
 #include <cstring>
 #include <string>
 
@@ -221,8 +222,57 @@ Handle<Value> ToHex(const Arguments& args) {
 	return ToHexAction()(args);
 }
 
+Handle<Value> Concat(const Arguments& args) {
+	HandleScope scope;
+
+	size_t size = 0;
+	for (int index = 0, length = args.Length(); index < length; ++index) {
+		Local<Value> arg = args[index];
+		if (arg->IsString()) {
+			// Utf8Length() because we need the length in bytes, not characters
+			size += arg->ToString()->Utf8Length();
+		}
+		else if (Buffer::HasInstance(arg)) {
+			Buffer& b = *Buffer::Unwrap<Buffer>(arg->ToObject());
+			size += b.length();
+		}
+		else {
+			std::stringstream s;
+			s << "Argument #" << index << " is neither a string nor a buffer object.";
+			const char* message = s.str().c_str();
+			return ThrowException(Exception::TypeError(String::New(message)));
+		}
+	}
+
+	Buffer& dst = *Buffer::New(size);
+	char* s = dst.data();
+
+	for (int index = 0, length = args.Length(); index < length; ++index) {
+		Local<Value> arg = args[index];
+		if (arg->IsString()) {
+			String::Utf8Value v(arg->ToString());
+			memcpy(s, *v, v.length());
+			s += v.length();
+		}
+		else if (Buffer::HasInstance(arg)) {
+			Buffer& b = *Buffer::Unwrap<Buffer>(arg->ToObject());
+			memcpy(s, b.data(), b.length());
+			s += b.length();
+		}
+		else {
+			return ThrowException(Exception::Error(String::New(
+					"Congratulations! You have run into a bug: argument is neither a string nor a buffer object. "
+					"Please make the world a better place and report it.")));
+		}
+	}
+
+	return scope.Close(dst.handle_);
+}
+
 extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
+
+	target->Set(String::NewSymbol("concat"), FunctionTemplate::New(Concat)->GetFunction());
 
 	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
 	proto->Set(String::NewSymbol("fill"), FunctionTemplate::New(Fill)->GetFunction());
