@@ -104,6 +104,20 @@ struct FillAction: UnaryAction<FillAction> {
 	}
 };
 
+struct ReverseAction: UnaryAction<ReverseAction> {
+	// O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
+	// XXX won't this trash the L1 cache something awful?
+	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
+		char* head = buffer.data();
+		char* tail = buffer.data() + buffer.length() - 1;
+
+		// xor swap, just because I can
+		while (head < tail) *head ^= *tail, *tail ^= *head, *head ^= *tail, ++head, --tail;
+
+		return scope.Close(buffer.handle_);
+	}
+};
+
 struct EqualsAction: BinaryAction<EqualsAction> {
 	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
 		return compare(buffer, data, size) == 0 ? True() : False();
@@ -202,6 +216,10 @@ Handle<Value> Fill(const Arguments& args) {
 	return FillAction()(args);
 }
 
+Handle<Value> Reverse(const Arguments& args) {
+	return ReverseAction()(args);
+}
+
 Handle<Value> Equals(const Arguments& args) {
 	return EqualsAction()(args);
 }
@@ -275,13 +293,14 @@ extern "C" void init(Handle<Object> target) {
 	target->Set(String::NewSymbol("concat"), FunctionTemplate::New(Concat)->GetFunction());
 
 	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
-	proto->Set(String::NewSymbol("fill"), FunctionTemplate::New(Fill)->GetFunction());
-	proto->Set(String::NewSymbol("clear"), FunctionTemplate::New(Clear)->GetFunction());
-	proto->Set(String::NewSymbol("equals"), FunctionTemplate::New(Equals)->GetFunction());
+	proto->Set(String::NewSymbol("fill"),    FunctionTemplate::New(Fill)->GetFunction());
+	proto->Set(String::NewSymbol("clear"),   FunctionTemplate::New(Clear)->GetFunction());
+	proto->Set(String::NewSymbol("reverse"), FunctionTemplate::New(Reverse)->GetFunction());
+	proto->Set(String::NewSymbol("equals"),  FunctionTemplate::New(Equals)->GetFunction());
 	proto->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
 	proto->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
 	proto->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
-	proto->Set(String::NewSymbol("toHex"), FunctionTemplate::New(ToHex)->GetFunction());
+	proto->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
 }
 
 }

@@ -24,6 +24,14 @@ Note that most methods that take a buffer as an argument, will also accept a str
 Clear the buffer. This is equivalent to `Buffer.fill(0)`.
 Returns the buffer object so you can chain method calls.
 
+### Buffer.reverse()
+
+Reverse the content of the buffer, in place. Example:
+
+    b = new Buffer('live');
+    b.reverse();
+    console.log(b); // "evil"
+
 ### Buffer.fill(integer|string|buffer)
 
 Fill the buffer (repeatedly if necessary) with the argument.

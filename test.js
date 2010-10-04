@@ -58,3 +58,6 @@ assert.throws(function() { buffertools.concat('foo', 123, 'baz'); });
 a = new Buffer('For great justice.'), b = buffertools.concat(a);
 assert.deepEqual(a, b);
 assert.notEqual(a, b);
+
+assert.equal('', new Buffer('').reverse());
+assert.equal('For great justice.', new Buffer('.ecitsuj taerg roF').reverse());
