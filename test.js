@@ -51,6 +51,7 @@ assert.equal('09200d0a', b.toHex());
 assert.equal(b.inspect(), new Buffer('09200d0a').fromHex().inspect());
 
 assert.equal('', buffertools.concat());
+assert.equal('', buffertools.concat(''));
 assert.equal('foobarbaz', buffertools.concat(new Buffer('foo'), 'bar', new Buffer('baz')));
 assert.throws(function() { buffertools.concat('foo', 123, 'baz'); });
 // assert that the buffer is copied, not returned as-is
