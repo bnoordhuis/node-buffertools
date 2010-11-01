@@ -6,6 +6,8 @@
 #include <cstring>
 #include <string>
 
+#include "BoyerMoore.h"
+
 using namespace v8;
 using namespace node;
 
@@ -13,28 +15,41 @@ namespace {
 
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope);
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
 		HandleScope scope;
-		return static_cast<Derived*>(this)->apply(*Buffer::Unwrap<Buffer>(args.This()), args, scope);
+
+		Local<Object> self = args.This();
+		if (!Buffer::HasInstance(self)) {
+			return ThrowException(Exception::TypeError(String::New(
+					"Argument should be a buffer object.")));
+		}
+
+		return static_cast<Derived*>(this)->apply(self, args, scope);
 	}
 };
 
 template <class Derived> struct BinaryAction {
-	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope);
+	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
 		HandleScope scope;
 
-		Buffer& buffer = *Buffer::Unwrap<Buffer>(args.This());
+		Local<Object> self = args.This();
+		if (!Buffer::HasInstance(self)) {
+			return ThrowException(Exception::TypeError(String::New(
+					"Argument should be a buffer object.")));
+		}
+
 		if (args[0]->IsString()) {
 			String::Utf8Value s(args[0]->ToString());
-			return static_cast<Derived*>(this)->apply(buffer, *s, s.length(), args, scope);
+			return static_cast<Derived*>(this)->apply(self, *s, s.length(), args, scope);
 		}
 		if (Buffer::HasInstance(args[0])) {
-			Buffer& other = *Buffer::Unwrap<Buffer>(args[0]->ToObject());
-			return static_cast<Derived*>(this)->apply(buffer, other.data(), other.length(), args, scope);
+			Local<Object> other = args[0]->ToObject();
+			return static_cast<Derived*>(this)->apply(
+					self, Buffer::Data(other), Buffer::Length(other), args, scope);
 		}
 
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
@@ -46,43 +61,52 @@ template <class Derived> struct BinaryAction {
 //
 // helper functions
 //
-Handle<Value> clear(Buffer& buffer, int c) {
-	memset(buffer.data(), c, buffer.length());
-	return buffer.handle_;
+Handle<Value> clear(Handle<Object>& buffer, int c) {
+	size_t length = Buffer::Length(buffer);
+	char* data = Buffer::Data(buffer);
+	memset(data, c, length);
+	return buffer;
 }
 
-Handle<Value> fill(Buffer& buffer, void* pattern, size_t size) {
-	if (size >= buffer.length()) {
-		memcpy(buffer.data(), pattern, buffer.length());
+Handle<Value> fill(Handle<Object>& buffer, void* pattern, size_t size) {
+	size_t length = Buffer::Length(buffer);
+	char* data = Buffer::Data(buffer);
+
+	if (size >= length) {
+		memcpy(data, pattern, length);
 	} else {
-		const int n_copies = buffer.length() / size;
-		const int remainder = buffer.length() % size;
+		const int n_copies = length / size;
+		const int remainder = length % size;
 		for (int i = 0; i < n_copies; i++) {
-			memcpy(buffer.data() + size * i, pattern, size);
+			memcpy(data + size * i, pattern, size);
 		}
-		memcpy(buffer.data() + size * n_copies, pattern, remainder);
+		memcpy(data + size * n_copies, pattern, remainder);
 	}
-	return buffer.handle_;
+
+	return buffer;
 }
 
-int compare(Buffer& a, const char* data, size_t length) {
-	if (a.length() != length) {
-		return a.length() > length ? 1 : -1;
+int compare(Handle<Object>& buffer, const char* data2, size_t length2) {
+	size_t length = Buffer::Length(buffer);
+	if (length != length2) {
+		return length > length2 ? 1 : -1;
 	}
-	return memcmp(a.data(), data, length);
+
+	char* data = Buffer::Data(buffer);
+	return memcmp(data, data2, length);
 }
 
 //
 // actions
 //
 struct ClearAction: UnaryAction<ClearAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
 		return clear(buffer, 0);
 	}
 };
 
 struct FillAction: UnaryAction<FillAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
 		if (args[0]->IsInt32()) {
 			int c = args[0]->ToInt32()->Int32Value();
 			return clear(buffer, c);
@@ -94,8 +118,10 @@ struct FillAction: UnaryAction<FillAction> {
 		}
 
 		if (Buffer::HasInstance(args[0])) {
-			Buffer& other = *Buffer::Unwrap<Buffer>(args[0]->ToObject());
-			return fill(buffer, other.data(), other.length());
+			Handle<Object> other = args[0]->ToObject();
+			size_t length = Buffer::Length(other);
+			char* data = Buffer::Data(other);
+			return fill(buffer, data, length);
 		}
 
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
@@ -107,35 +133,37 @@ struct FillAction: UnaryAction<FillAction> {
 struct ReverseAction: UnaryAction<ReverseAction> {
 	// O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
 	// XXX won't this trash the L1 cache something awful?
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
-		char* head = buffer.data();
-		char* tail = buffer.data() + buffer.length() - 1;
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+		char* head = Buffer::Data(buffer);
+		char* tail = head + Buffer::Length(buffer) - 1;
 
 		// xor swap, just because I can
 		while (head < tail) *head ^= *tail, *tail ^= *head, *head ^= *tail, ++head, --tail;
 
-		return scope.Close(buffer.handle_);
+		return buffer;
 	}
 };
 
 struct EqualsAction: BinaryAction<EqualsAction> {
-	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
 		return compare(buffer, data, size) == 0 ? True() : False();
 	}
 };
 
 struct CompareAction: BinaryAction<CompareAction> {
-	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
 		return scope.Close(Integer::New(compare(buffer, data, size)));
 	}
 };
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
-	Handle<Value> apply(Buffer& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
-		// FIXME memmem is a GNU extension
-		const char* p = (const char*) memmem(buffer.data(), buffer.length(), data, size);
-		// FIXME ptrdiff_t may be larger than the range of a JS integer
-		const ptrdiff_t offset = p ? p - buffer.data() : -1;
+	Handle<Value> apply(Handle<Object>& buffer, const char* data2, size_t size2, const Arguments& args, HandleScope& scope) {
+		const char* data = Buffer::Data(buffer);
+		size_t size = Buffer::Length(buffer);
+
+		const char* p = BoyerMoore(data, size, data2, size2);
+		const ptrdiff_t offset = p ? (p - data) : -1;
+
 		return scope.Close(Integer::New(offset));
 	}
 };
@@ -164,8 +192,8 @@ inline Handle<Value> decodeHex(const char* data, size_t size, const Arguments& a
 		return String::Empty();
 	}
 
-	Buffer& buffer = *Buffer::New(size / 2);
-	for (char* s = buffer.data(); size > 0; size -= 2) {
+	Handle<Object>& buffer = Buffer::New(size / 2)->handle_;
+	for (char* s = Buffer::Data(buffer); size > 0; size -= 2) {
 		int a = fromHexTable[*data++];
 		int b = fromHexTable[*data++];
 
@@ -177,18 +205,21 @@ inline Handle<Value> decodeHex(const char* data, size_t size, const Arguments& a
 		*s++ = b | (a << 4);
 	}
 
-	return buffer.handle_;
+	return buffer;
 }
 
 struct FromHexAction: UnaryAction<FromHexAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
-		return decodeHex(buffer.data(), buffer.length(), args, scope);
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+		const char* data = Buffer::Data(buffer);
+		size_t length = Buffer::Length(buffer);
+		return decodeHex(data, length, args, scope);
 	}
 };
 
 struct ToHexAction: UnaryAction<ToHexAction> {
-	Handle<Value> apply(Buffer& buffer, const Arguments& args, HandleScope& scope) {
-		const size_t size = buffer.length();
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+		const size_t size = Buffer::Length(buffer);
+		const char* data = Buffer::Data(buffer);
 
 		if (size == 0) {
 			return String::Empty();
@@ -196,7 +227,7 @@ struct ToHexAction: UnaryAction<ToHexAction> {
 
 		std::string s(size * 2, 0);
 		for (size_t i = 0; i < size; ++i) {
-			const int c = buffer.data()[i];
+			const int c = data[i];
 			s[i * 2] = toHexTable[c >> 4];
 			s[i * 2 + 1] = toHexTable[c & 15];
 		}
@@ -288,19 +319,15 @@ Handle<Value> Concat(const Arguments& args) {
 }
 
 extern "C" void init(Handle<Object> target) {
-	HandleScope scope;
-
-	target->Set(String::NewSymbol("concat"), FunctionTemplate::New(Concat)->GetFunction());
-
-	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
-	proto->Set(String::NewSymbol("fill"),    FunctionTemplate::New(Fill)->GetFunction());
-	proto->Set(String::NewSymbol("clear"),   FunctionTemplate::New(Clear)->GetFunction());
-	proto->Set(String::NewSymbol("reverse"), FunctionTemplate::New(Reverse)->GetFunction());
-	proto->Set(String::NewSymbol("equals"),  FunctionTemplate::New(Equals)->GetFunction());
-	proto->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
-	proto->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
-	proto->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
-	proto->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
+	target->Set(String::NewSymbol("concat"),  FunctionTemplate::New(Concat)->GetFunction());
+	target->Set(String::NewSymbol("fill"),    FunctionTemplate::New(Fill)->GetFunction());
+	target->Set(String::NewSymbol("clear"),   FunctionTemplate::New(Clear)->GetFunction());
+	target->Set(String::NewSymbol("reverse"), FunctionTemplate::New(Reverse)->GetFunction());
+	target->Set(String::NewSymbol("equals"),  FunctionTemplate::New(Equals)->GetFunction());
+	target->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
+	target->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+	target->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
+	target->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
 }
 
 }
