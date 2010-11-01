@@ -4,6 +4,5 @@ Buffer = require('buffer').Buffer;
 
 // extend object prototypes
 for (var property in buffertools) {
-	SlowBuffer.prototype[property] = SlowBuffer[property];
-	Buffer.prototype[property] = buffertools[property];
+	exports[property] = Buffer.prototype[property] = SlowBuffer.prototype[property] = buffertools[property];
 }
