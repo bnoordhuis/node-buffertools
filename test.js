@@ -54,16 +54,14 @@ b = new Buffer("\t \r\n");
 assert.equal('09200d0a', b.toHex());
 assert.equal(b.toString(), new Buffer('09200d0a').fromHex().toString());
 
-/*
 assert.equal('', buffertools.concat());
 assert.equal('', buffertools.concat(''));
 assert.equal('foobarbaz', buffertools.concat(new Buffer('foo'), 'bar', new Buffer('baz')));
 assert.throws(function() { buffertools.concat('foo', 123, 'baz'); });
 // assert that the buffer is copied, not returned as-is
 a = new Buffer('For great justice.'), b = buffertools.concat(a);
-assert.deepEqual(a, b);
+assert.equal(a.toString(), b.toString());
 assert.notEqual(a, b);
-*/
 
 assert.equal('', new Buffer('').reverse());
 assert.equal('For great justice.', new Buffer('.ecitsuj taerg roF').reverse());
