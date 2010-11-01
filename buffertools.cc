@@ -253,16 +253,13 @@ Handle<Value> ToHex(const Arguments& args) {
 }
 
 extern "C" void init(Handle<Object> target) {
-	HandleScope scope;
-
-	Local<Object> proto = Buffer::New(0)->handle_->GetPrototype()->ToObject();
-	proto->Set(String::NewSymbol("fill"), FunctionTemplate::New(Fill)->GetFunction());
-	proto->Set(String::NewSymbol("clear"), FunctionTemplate::New(Clear)->GetFunction());
-	proto->Set(String::NewSymbol("equals"), FunctionTemplate::New(Equals)->GetFunction());
-	proto->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
-	proto->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
-	proto->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
-	proto->Set(String::NewSymbol("toHex"), FunctionTemplate::New(ToHex)->GetFunction());
+	target->Set(String::NewSymbol("fill"), FunctionTemplate::New(Fill)->GetFunction());
+	target->Set(String::NewSymbol("clear"), FunctionTemplate::New(Clear)->GetFunction());
+	target->Set(String::NewSymbol("equals"), FunctionTemplate::New(Equals)->GetFunction());
+	target->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
+	target->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+	target->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
+	target->Set(String::NewSymbol("toHex"), FunctionTemplate::New(ToHex)->GetFunction());
 }
 
 }

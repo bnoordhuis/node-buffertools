@@ -11,3 +11,4 @@ def build(ctx):
 	t = ctx.new_task_gen('cxx', 'shlib', 'node_addon')
 	t.target = 'buffertools'
 	t.source = 'buffertools.cc'
+	ctx.install_files('${NODE_PATH}', 'buffertools.js')
