@@ -282,8 +282,7 @@ Handle<Value> Concat(const Arguments& args) {
 			size += arg->ToString()->Utf8Length();
 		}
 		else if (Buffer::HasInstance(arg)) {
-			Buffer& b = *Buffer::Unwrap<Buffer>(arg->ToObject());
-			size += b.length();
+			size += Buffer::Length(arg->ToObject());
 		}
 		else {
 			std::stringstream s;
@@ -294,7 +293,7 @@ Handle<Value> Concat(const Arguments& args) {
 	}
 
 	Buffer& dst = *Buffer::New(size);
-	char* s = dst.data();
+	char* s = Buffer::Data(dst.handle_);
 
 	for (int index = 0, length = args.Length(); index < length; ++index) {
 		Local<Value> arg = args[index];
@@ -304,9 +303,11 @@ Handle<Value> Concat(const Arguments& args) {
 			s += v.length();
 		}
 		else if (Buffer::HasInstance(arg)) {
-			Buffer& b = *Buffer::Unwrap<Buffer>(arg->ToObject());
-			memcpy(s, b.data(), b.length());
-			s += b.length();
+			Local<Object> b = arg->ToObject();
+			const char* data = Buffer::Data(b);
+			size_t length = Buffer::Length(b);
+			memcpy(s, data, length);
+			s += length;
 		}
 		else {
 			return ThrowException(Exception::Error(String::New(
