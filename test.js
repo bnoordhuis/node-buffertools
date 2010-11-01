@@ -42,6 +42,7 @@ b = new Buffer('Hello, world!');
 assert.equal(-1, b.indexOf(new Buffer('foo')));
 assert.equal(0,  b.indexOf(new Buffer('Hell')));
 assert.equal(7,  b.indexOf(new Buffer('world')));
+assert.equal(7,  b.indexOf(new Buffer('world!')));
 assert.equal(-1, b.indexOf('foo'));
 assert.equal(0,  b.indexOf('Hell'));
 assert.equal(7,  b.indexOf('world'));
@@ -51,4 +52,4 @@ assert.equal(7,  b.indexOf('w'));
 
 b = new Buffer("\t \r\n");
 assert.equal('09200d0a', b.toHex());
-assert.equal(b.inspect(), new Buffer('09200d0a').fromHex().inspect());
+assert.equal(b.toString(), new Buffer('09200d0a').fromHex().toString());
