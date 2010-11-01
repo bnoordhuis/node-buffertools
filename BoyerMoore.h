@@ -20,6 +20,7 @@ static inline const char *BoyerMoore( const char *data, unsigned int dataLength,
 	if (strLength == 1)
 		return (const char *) memchr(data, *string, dataLength);
 
+	const char *end = data + dataLength;
 	unsigned int skipTable[256], i;
 	const char *search;
 	char lastChar;
@@ -71,7 +72,7 @@ static inline const char *BoyerMoore( const char *data, unsigned int dataLength,
 		{
 			// Have we found the entire string?
 			if (i-- == 0)
-				return search;
+				return search + strLength < end ? search : NULL;
 		} while (*--search == string[i]);
 
 		// Skip past the part of the string that we scanned already
