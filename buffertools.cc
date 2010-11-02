@@ -161,7 +161,9 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
 		const char* data = Buffer::Data(buffer);
 		size_t size = Buffer::Length(buffer);
 
-		const int offset = BoyerMooreHorspool(data, size, data2, size2);
+		const char* p = boyermoore_search(data, size, data2, size2);
+		const ptrdiff_t offset = p ? (p - data) : -1;
+
 		return scope.Close(Integer::New(offset));
 	}
 };

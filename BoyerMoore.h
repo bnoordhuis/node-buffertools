@@ -1,39 +1,119 @@
-// adapted from spidermonkey/src/jsstr.c
+/* adapted from http://en.wikipedia.org/wiki/Boyer–Moore_string_search_algorithm */
 #ifndef BOYER_MOORE_H
 #define BOYER_MOORE_H
 
-#define BMH_CHARSET_SIZE 256
+#include <limits.h>
+#include <string.h>
 
-// FIXME Boyer–Moore–Horspool has O(MN) worst case complexity, replace with plain or turbo BM search
-int BoyerMooreHorspool(const char *text, int textlen, const char *pat, int patlen, int start = 0)
-{
-	int i, j, k, m;
-	unsigned char skip[BMH_CHARSET_SIZE];
-	unsigned char c;
+#define ALPHABET_SIZE (1 << CHAR_BIT)
 
-	if (patlen == 0) {
-		return -1;
-	}
-	// TODO maybe optimize 1-byte searches with memchr?
+static void compute_prefix(const char* str, size_t size, int result[]) {
+	size_t q;
+	int k;
+	result[0] = 0;
 
-	for (i = 0; i < BMH_CHARSET_SIZE; i++)
-		skip[i] = (unsigned char)patlen;
-	m = patlen - 1;
-	for (i = 0; i < m; i++) {
-		c = pat[i];
-		skip[c] = (unsigned char)(m - i);
-	}
-	for (k = start + m;
-		 k < textlen;
-		 k += ((c = text[k]) >= BMH_CHARSET_SIZE) ? patlen : skip[c]) {
-		for (i = k, j = m; ; i--, j--) {
-			if (j < 0)
-				return i + 1;
-			if (text[i] != pat[j])
-				break;
+	k = 0;
+	for (q = 1; q < size; q++) {
+		while (k > 0 && str[k] != str[q])
+			k = result[k-1];
+
+			if (str[k] == str[q])
+				k++;
+
+			result[q] = k;
 		}
 	}
-	return -1;
+
+static void prepare_badcharacter_heuristic(const char *str, size_t size, int result[ALPHABET_SIZE]) {
+	size_t i;
+
+	for (i = 0; i < ALPHABET_SIZE; i++)
+		result[i] = -1;
+
+	for (i = 0; i < size; i++)
+		result[(size_t) str[i]] = i;
+}
+
+void prepare_goodsuffix_heuristic(const char *normal, size_t size, int result[]) {
+
+	char *left = (char *) normal;
+	char *right = left + size;
+	char reversed[size+1];
+	char *tmp = reversed + size;
+	size_t i;
+
+	/* reverse string */
+	*tmp = 0;
+	while (left < right)
+		*(--tmp) = *(left++);
+
+	int prefix_normal[size];
+	int prefix_reversed[size];
+
+	compute_prefix(normal, size, prefix_normal);
+	compute_prefix(reversed, size, prefix_reversed);
+
+	for (i = 0; i <= size; i++) {
+		result[i] = size - prefix_normal[size-1];
+	}
+
+	for (i = 0; i < size; i++) {
+		const int j = size - prefix_reversed[i];
+		const int k = i - prefix_reversed[i]+1;
+
+		if (result[j] > k)
+			result[j] = k;
+	}
+}
+
+/*
+* Boyer-Moore search algorithm
+*/
+const char *boyermoore_search(const char *haystack, size_t haystack_len, const char *needle, size_t needle_len) {
+	/*
+	* Simple checks
+	*/
+	if(haystack_len == 0)
+		return NULL;
+	if(needle_len == 0)
+		return NULL;
+
+	/*
+	* Initialize heuristics
+	*/
+	int badcharacter[ALPHABET_SIZE];
+	int goodsuffix[needle_len+1];
+
+	prepare_badcharacter_heuristic(needle, needle_len, badcharacter);
+	prepare_goodsuffix_heuristic(needle, needle_len, goodsuffix);
+
+	/*
+	* Boyer-Moore search
+	*/
+	size_t s = 0;
+	while(s <= (haystack_len - needle_len))
+	{
+		size_t j = needle_len;
+		while(j > 0 && needle[j-1] == haystack[s+j-1])
+			j--;
+
+		if(j > 0)
+		{
+			int k = badcharacter[(size_t) haystack[s+j-1]];
+			int m;
+			if(k < (int)j && (m = j-k-1) > goodsuffix[j])
+				s+= m;
+			else
+				s+= goodsuffix[j];
+		}
+		else
+		{
+			return haystack + s;
+		}
+	}
+
+	/* not found */
+	return NULL;
 }
 
 #endif	/* BoyerMoore.h */
