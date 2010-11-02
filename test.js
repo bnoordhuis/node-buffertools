@@ -65,3 +65,8 @@ assert.notEqual(a, b);
 
 assert.equal('', new Buffer('').reverse());
 assert.equal('For great justice.', new Buffer('.ecitsuj taerg roF').reverse());
+
+// http://github.com/bnoordhuis/node-buffertools/issues#issue/5
+endOfHeader = new Buffer('\r\n\r\n');
+assert.equal(0, endOfHeader.indexOf(endOfHeader));
+assert.equal(0, endOfHeader.indexOf('\r\n\r\n'));
