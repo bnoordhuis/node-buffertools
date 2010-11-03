@@ -319,7 +319,7 @@ Handle<Value> Concat(const Arguments& args) {
 	return scope.Close(dst.handle_);
 }
 
-extern "C" void init(Handle<Object> target) {
+void RegisterModule(Handle<Object> target) {
 	target->Set(String::NewSymbol("concat"),  FunctionTemplate::New(Concat)->GetFunction());
 	target->Set(String::NewSymbol("fill"),    FunctionTemplate::New(Fill)->GetFunction());
 	target->Set(String::NewSymbol("clear"),   FunctionTemplate::New(Clear)->GetFunction());
@@ -331,4 +331,6 @@ extern "C" void init(Handle<Object> target) {
 	target->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
 }
 
-}
+} // anonymous namespace
+
+NODE_MODULE(buffertools, RegisterModule);
