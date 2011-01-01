@@ -1,4 +1,8 @@
-assert = require('assert'), buffertools = require('buffertools'), Buffer = require('buffer').Buffer;
+buffertools = require('buffertools');
+Buffer = require('buffer').Buffer;
+assert = require('assert');
+
+WritableBufferStream = buffertools.WritableBufferStream;
 
 // these trigger the code paths for UnaryAction and BinaryAction
 assert.throws(function() { buffertools.clear({}); });
@@ -67,7 +71,25 @@ assert.notEqual(a, b);
 assert.equal('', new Buffer('').reverse());
 assert.equal('For great justice.', new Buffer('.ecitsuj taerg roF').reverse());
 
-// http://github.com/bnoordhuis/node-buffertools/issues#issue/5
+// bug fix, see http://github.com/bnoordhuis/node-buffertools/issues#issue/5
 endOfHeader = new Buffer('\r\n\r\n');
 assert.equal(0, endOfHeader.indexOf(endOfHeader));
 assert.equal(0, endOfHeader.indexOf('\r\n\r\n'));
+
+// feature request, see https://github.com/bnoordhuis/node-buffertools/issues#issue/8
+closed = false;
+stream = new WritableBufferStream();
+
+stream.on('close', function() { closed = true; });
+stream.write('Hello,');
+stream.write(' ');
+stream.write('world!');
+stream.end();
+
+assert.equal(true, closed);
+assert.equal(false, stream.writable);
+assert.equal('Hello, world!', stream.toString());
+assert.equal('Hello, world!', stream.getBuffer().toString());
+
+// closed stream should throw
+assert.throws(function() { stream.write('ZIG!'); });
