@@ -15,37 +15,12 @@ Now you can include the module in your project.
 
 ## Methods
 
-The API is still in flux but here are the goodies so far.
-
 Note that most methods that take a buffer as an argument, will also accept a string.
 
 ### Buffer.clear()
 
 Clear the buffer. This is equivalent to `Buffer.fill(0)`.
 Returns the buffer object so you can chain method calls.
-
-### Buffer.reverse()
-
-Reverse the content of the buffer, in place. Example:
-
-    b = new Buffer('live');
-    b.reverse();
-    console.log(b); // "evil"
-
-### Buffer.fill(integer|string|buffer)
-
-Fill the buffer (repeatedly if necessary) with the argument.
-Returns the buffer object so you can chain method calls.
-
-### Buffer.equals(buffer|string)
-
-Returns true if this buffer equals the argument, false otherwise.
-
-Buffers are considered equal when they are of the same length and contain
-the same binary data.
-
-Caveat emptor: If you store strings with different character encodings
-in buffers, they will most likely *not* be equal.
 
 ### Buffer.compare(buffer|string)
 
@@ -55,17 +30,37 @@ if a < b, zero if a == b or a number larger than 1 if a > b.
 Buffers are considered equal when they are of the same length and contain
 the same binary data.
 
-Smaller buffers are considered to be less than larger ones. This has hurt
-some buffers' feelings.
+Smaller buffers are considered to be less than larger ones. Some buffers
+find this hurtful.
 
-### Buffer.indexOf(buffer|string)
+### Buffer.concat(a, b, c, ...)
+### buffertools.concat(a, b, c, ...)
 
-Search this buffer for the first occurrence of the argument.
-Returns the zero-based index or -1 if there is no match.
+Concatenate two or more buffers/strings and return the result. Example:
 
-### Buffer.toHex()
+	// identical to new Buffer('foobarbaz')
+	a = new Buffer('foo');
+	b = new Buffer('bar');
+	c = a.concat(b, 'baz');
+	console.log(a, b, c); // "foo bar foobarbaz"
 
-Returns the contents of this buffer encoded as a hexadecimal string.
+	// static variant
+	buffertools.concat('foo', new Buffer('bar'), 'baz');
+
+### Buffer.equals(buffer|string)
+
+Returns true if this buffer equals the argument, false otherwise.
+
+Buffers are considered equal when they are of the same length and contain
+the same binary data.
+
+Caveat emptor: If your buffers contain strings with different character encodings,
+they will most likely *not* be equal.
+
+### Buffer.fill(integer|string|buffer)
+
+Fill the buffer (repeatedly if necessary) with the argument.
+Returns the buffer object so you can chain method calls.
 
 ### Buffer.fromHex()
 
@@ -73,15 +68,47 @@ Assumes this buffer contains hexadecimal data (packed, no whitespace)
 and decodes it into binary data. Returns a new buffer with the decoded
 content. Throws an exception if non-hexadecimal data is encountered.
 
-### buffertools.concat(a, b, c, ...)
+### Buffer.indexOf(buffer|string)
 
-Concatenate two or more buffers/strings. Example:
+Search this buffer for the first occurrence of the argument.
+Returns the zero-based index or -1 if there is no match.
 
-    // identical to new Buffer('foobarbaz')
-    buffertools.concat('foo', new Buffer('bar'), 'baz');
+### Buffer.reverse()
+
+Reverse the content of the buffer in place. Example:
+
+	b = new Buffer('live');
+	b.reverse();
+	console.log(b); // "evil"
+
+### Buffer.toHex()
+
+Returns the contents of this buffer encoded as a hexadecimal string.
+
+## Classes
+
+Singular, actually. To wit:
+
+## WritableBufferStream
+
+This is a regular node.js [writable stream](http://nodejs.org/docs/v0.3.4/api/streams.html#writable_Stream)
+that accumulates the data it receives into a buffer.
+
+Example usage:
+
+	// slurp stdin into a buffer
+	process.stdin.resume();
+	ostream = new WritableBufferStream();
+	util.pump(process.stdin, ostream);
+	console.log(ostream.getBuffer());
+
+The stream never emits 'error' or 'drain' events.
+
+### WritableBufferStream.getBuffer()
+
+Return the data accumulated so far as a buffer.
 
 ## TODO
 
 * Logical operations on buffers (AND, OR, XOR).
-* bin2hex and hex2bin functionality.
 * Add lastIndexOf() functions.
