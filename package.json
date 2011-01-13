@@ -1,0 +1,24 @@
+{
+	"name": "buffertools",
+	"main": "build/default/buffertools",
+	"version": "1.0.0",
+	"keywords": ["buffer", "buffers"],
+	"description": "Working with node.js buffers made easy.",
+	"homepage": "https://github.com/bnoordhuis/node-buffertools",
+	"author": {
+		"name": "Ben Noordhuis",
+		"email": "info@bnoordhuis.nl",
+		"url": "http://bnoordhuis.nl/"
+	},
+	"scripts": {
+		"preinstall": "node-waf configure",
+		"install": "node-waf build install"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/bnoordhuis/node-buffertools.git"
+	},
+	"engines": {
+		"node": ">=0.3.0"
+	}
+}
