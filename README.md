@@ -4,7 +4,11 @@ Utilities for manipulating buffers.
 
 ## Installing the module
 
-Easy!
+Easy! With [npm](http://npmjs.org/):
+
+	npm install buffertools
+
+From source:
 
 	node-waf configure build install
 
