@@ -228,7 +228,7 @@ struct ToHexAction: UnaryAction<ToHexAction> {
 		std::string s(size * 2, 0);
 		for (size_t i = 0; i < size; ++i) {
 			const int c = data[i];
-			s[i * 2] = toHexTable[c >> 4];
+			s[i * 2] = toHexTable[(c >> 4) & 15];
 			s[i * 2 + 1] = toHexTable[c & 15];
 		}
 
