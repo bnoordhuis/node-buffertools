@@ -58,6 +58,14 @@ b = new Buffer("\t \r\n");
 assert.equal('09200d0a', b.toHex());
 assert.equal(b.toString(), new Buffer('09200d0a').fromHex().toString());
 
+// https://github.com/bnoordhuis/node-buffertools/pull/9
+b = new Buffer(4);
+b[0] = 0x98;
+b[1] = 0x95;
+b[2] = 0x60;
+b[3] = 0x2f;
+assert.equal('9895602f', b.toHex());
+
 assert.equal('', buffertools.concat());
 assert.equal('', buffertools.concat(''));
 assert.equal('foobar', new Buffer('foo').concat('bar'));
