@@ -2,6 +2,7 @@
 #include <node.h>
 #include <node_buffer.h>
 
+#include <stdint.h>
 #include <sstream>
 #include <cstring>
 #include <string>
@@ -31,7 +32,7 @@ template <class Derived> struct UnaryAction {
 };
 
 template <class Derived> struct BinaryAction {
-	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope);
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope);
 
 	Handle<Value> operator()(const Arguments& args) {
 		HandleScope scope;
@@ -44,12 +45,12 @@ template <class Derived> struct BinaryAction {
 
 		if (args[0]->IsString()) {
 			String::Utf8Value s(args[0]->ToString());
-			return static_cast<Derived*>(this)->apply(self, *s, s.length(), args, scope);
+			return static_cast<Derived*>(this)->apply(self, (uint8_t*) *s, s.length(), args, scope);
 		}
 		if (Buffer::HasInstance(args[0])) {
 			Local<Object> other = args[0]->ToObject();
 			return static_cast<Derived*>(this)->apply(
-					self, Buffer::Data(other), Buffer::Length(other), args, scope);
+					self, (const uint8_t*) Buffer::Data(other), Buffer::Length(other), args, scope);
 		}
 
 		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
@@ -63,14 +64,14 @@ template <class Derived> struct BinaryAction {
 //
 Handle<Value> clear(Handle<Object>& buffer, int c) {
 	size_t length = Buffer::Length(buffer);
-	char* data = Buffer::Data(buffer);
+	uint8_t* data = (uint8_t*) Buffer::Data(buffer);
 	memset(data, c, length);
 	return buffer;
 }
 
 Handle<Value> fill(Handle<Object>& buffer, void* pattern, size_t size) {
 	size_t length = Buffer::Length(buffer);
-	char* data = Buffer::Data(buffer);
+	uint8_t* data = (uint8_t*) Buffer::Data(buffer);
 
 	if (size >= length) {
 		memcpy(data, pattern, length);
@@ -86,13 +87,13 @@ Handle<Value> fill(Handle<Object>& buffer, void* pattern, size_t size) {
 	return buffer;
 }
 
-int compare(Handle<Object>& buffer, const char* data2, size_t length2) {
+int compare(Handle<Object>& buffer, const uint8_t* data2, size_t length2) {
 	size_t length = Buffer::Length(buffer);
 	if (length != length2) {
 		return length > length2 ? 1 : -1;
 	}
 
-	char* data = Buffer::Data(buffer);
+	const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 	return memcmp(data, data2, length);
 }
 
@@ -120,7 +121,7 @@ struct FillAction: UnaryAction<FillAction> {
 		if (Buffer::HasInstance(args[0])) {
 			Handle<Object> other = args[0]->ToObject();
 			size_t length = Buffer::Length(other);
-			char* data = Buffer::Data(other);
+			uint8_t* data = (uint8_t*) Buffer::Data(other);
 			return fill(buffer, data, length);
 		}
 
@@ -134,8 +135,8 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 	// O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
 	// XXX won't this trash the L1 cache something awful?
 	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
-		char* head = Buffer::Data(buffer);
-		char* tail = head + Buffer::Length(buffer) - 1;
+		uint8_t* head = (uint8_t*) Buffer::Data(buffer);
+		uint8_t* tail = head + Buffer::Length(buffer) - 1;
 
 		// xor swap, just because I can
 		while (head < tail) *head ^= *tail, *tail ^= *head, *head ^= *tail, ++head, --tail;
@@ -145,23 +146,23 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 };
 
 struct EqualsAction: BinaryAction<EqualsAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope) {
 		return compare(buffer, data, size) == 0 ? True() : False();
 	}
 };
 
 struct CompareAction: BinaryAction<CompareAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope) {
 		return scope.Close(Integer::New(compare(buffer, data, size)));
 	}
 };
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const char* data2, size_t size2, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data2, size_t size2, const Arguments& args, HandleScope& scope) {
 		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
-		size_t size = Buffer::Length(buffer);
+		const size_t size = Buffer::Length(buffer);
 
-		const uint8_t* p = boyermoore_search(data, size, (const uint8_t*) data2, size2);
+		const uint8_t* p = boyermoore_search(data, size, data2, size2);
 		const ptrdiff_t offset = p ? (p - data) : -1;
 
 		return scope.Close(Integer::New(offset));
@@ -182,7 +183,7 @@ static char fromHexTable[] = {
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
 
-inline Handle<Value> decodeHex(const char* const data, const size_t size, const Arguments& args, HandleScope& scope) {
+inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, const Arguments& args, HandleScope& scope) {
 	if (size & 1) {
 		return ThrowException(Exception::Error(String::New(
 				"Odd string length, this is not hexadecimal data.")));
@@ -195,7 +196,7 @@ inline Handle<Value> decodeHex(const char* const data, const size_t size, const 
 	Handle<Object>& buffer = Buffer::New(size / 2)->handle_;
 
 	uint8_t *src = (uint8_t *) data;
-	uint8_t *dst = (uint8_t *) Buffer::Data(buffer);
+	uint8_t *dst = (uint8_t *) (const uint8_t*) Buffer::Data(buffer);
 
 	for (size_t i = 0; i < size; i += 2) {
 		int a = fromHexTable[*src++];
@@ -214,7 +215,7 @@ inline Handle<Value> decodeHex(const char* const data, const size_t size, const 
 
 struct FromHexAction: UnaryAction<FromHexAction> {
 	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
-		const char* data = Buffer::Data(buffer);
+		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 		size_t length = Buffer::Length(buffer);
 		return decodeHex(data, length, args, scope);
 	}
@@ -223,7 +224,7 @@ struct FromHexAction: UnaryAction<FromHexAction> {
 struct ToHexAction: UnaryAction<ToHexAction> {
 	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
 		const size_t size = Buffer::Length(buffer);
-		const char* data = Buffer::Data(buffer);
+		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 
 		if (size == 0) {
 			return String::Empty();
@@ -297,7 +298,7 @@ Handle<Value> Concat(const Arguments& args) {
 	}
 
 	Buffer& dst = *Buffer::New(size);
-	char* s = Buffer::Data(dst.handle_);
+	uint8_t* s = (uint8_t*) Buffer::Data(dst.handle_);
 
 	for (int index = 0, length = args.Length(); index < length; ++index) {
 		Local<Value> arg = args[index];
@@ -308,7 +309,7 @@ Handle<Value> Concat(const Arguments& args) {
 		}
 		else if (Buffer::HasInstance(arg)) {
 			Local<Object> b = arg->ToObject();
-			const char* data = Buffer::Data(b);
+			const uint8_t* data = (const uint8_t*) Buffer::Data(b);
 			size_t length = Buffer::Length(b);
 			memcpy(s, data, length);
 			s += length;
