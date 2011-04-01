@@ -292,8 +292,9 @@ Handle<Value> Concat(const Arguments& args) {
 		else {
 			std::stringstream s;
 			s << "Argument #" << index << " is neither a string nor a buffer object.";
-			const char* message = s.str().c_str();
-			return ThrowException(Exception::TypeError(String::New(message)));
+			return ThrowException(
+					Exception::TypeError(
+							String::New(s.str().c_str())));
 		}
 	}
 
