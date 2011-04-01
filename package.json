@@ -1,7 +1,7 @@
 {
 	"name": "buffertools",
 	"main": "build/default/buffertools",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"keywords": ["buffer", "buffers"],
 	"description": "Working with node.js buffers made easy.",
 	"homepage": "https://github.com/bnoordhuis/node-buffertools",
