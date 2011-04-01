@@ -2,12 +2,13 @@
 #ifndef BOYER_MOORE_H
 #define BOYER_MOORE_H
 
+#include <stdint.h>
 #include <limits.h>
 #include <string.h>
 
 #define ALPHABET_SIZE (1 << CHAR_BIT)
 
-static void compute_prefix(const char* str, size_t size, int result[]) {
+static void compute_prefix(const uint8_t* str, size_t size, int result[]) {
 	size_t q;
 	int k;
 	result[0] = 0;
@@ -24,22 +25,21 @@ static void compute_prefix(const char* str, size_t size, int result[]) {
 		}
 	}
 
-static void prepare_badcharacter_heuristic(const char *str, size_t size, int result[ALPHABET_SIZE]) {
+static void prepare_badcharacter_heuristic(const uint8_t *str, size_t size, int result[ALPHABET_SIZE]) {
 	size_t i;
 
 	for (i = 0; i < ALPHABET_SIZE; i++)
 		result[i] = -1;
 
 	for (i = 0; i < size; i++)
-		result[(size_t) str[i]] = i;
+		result[str[i]] = i;
 }
 
-void prepare_goodsuffix_heuristic(const char *normal, size_t size, int result[]) {
-
-	char *left = (char *) normal;
-	char *right = left + size;
-	char reversed[size+1];
-	char *tmp = reversed + size;
+void prepare_goodsuffix_heuristic(const uint8_t *normal, size_t size, int result[]) {
+	const uint8_t *left = normal;
+	const uint8_t *right = left + size;
+	uint8_t reversed[size+1];
+	uint8_t *tmp = reversed + size;
 	size_t i;
 
 	/* reverse string */
@@ -69,7 +69,7 @@ void prepare_goodsuffix_heuristic(const char *normal, size_t size, int result[])
 /*
 * Boyer-Moore search algorithm
 */
-const char *boyermoore_search(const char *haystack, size_t haystack_len, const char *needle, size_t needle_len) {
+const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, const uint8_t *needle, size_t needle_len) {
 	/*
 	* Simple checks
 	*/
@@ -99,7 +99,7 @@ const char *boyermoore_search(const char *haystack, size_t haystack_len, const c
 
 		if(j > 0)
 		{
-			int k = badcharacter[(size_t) haystack[s+j-1]];
+			int k = badcharacter[haystack[s+j-1]];
 			int m;
 			if(k < (int)j && (m = j-k-1) > goodsuffix[j])
 				s+= m;

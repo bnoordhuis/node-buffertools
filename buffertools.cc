@@ -158,10 +158,10 @@ struct CompareAction: BinaryAction<CompareAction> {
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
 	Handle<Value> apply(Handle<Object>& buffer, const char* data2, size_t size2, const Arguments& args, HandleScope& scope) {
-		const char* data = Buffer::Data(buffer);
+		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 		size_t size = Buffer::Length(buffer);
 
-		const char* p = boyermoore_search(data, size, data2, size2);
+		const uint8_t* p = boyermoore_search(data, size, (const uint8_t*) data2, size2);
 		const ptrdiff_t offset = p ? (p - data) : -1;
 
 		return scope.Close(Integer::New(offset));
