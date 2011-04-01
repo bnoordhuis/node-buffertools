@@ -182,7 +182,7 @@ static char fromHexTable[] = {
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
 
-inline Handle<Value> decodeHex(const char* data, size_t size, const Arguments& args, HandleScope& scope) {
+inline Handle<Value> decodeHex(const char* const data, const size_t size, const Arguments& args, HandleScope& scope) {
 	if (size & 1) {
 		return ThrowException(Exception::Error(String::New(
 				"Odd string length, this is not hexadecimal data.")));
@@ -193,16 +193,20 @@ inline Handle<Value> decodeHex(const char* data, size_t size, const Arguments& a
 	}
 
 	Handle<Object>& buffer = Buffer::New(size / 2)->handle_;
-	for (char* s = Buffer::Data(buffer); size > 0; size -= 2) {
-		int a = fromHexTable[*data++];
-		int b = fromHexTable[*data++];
+
+	uint8_t *src = (uint8_t *) data;
+	uint8_t *dst = (uint8_t *) Buffer::Data(buffer);
+
+	for (size_t i = 0; i < size; i += 2) {
+		int a = fromHexTable[*src++];
+		int b = fromHexTable[*src++];
 
 		if (a == -1 || b == -1) {
 			return ThrowException(Exception::Error(String::New(
 					"This is not hexadecimal data.")));
 		}
 
-		*s++ = b | (a << 4);
+		*dst++ = b | (a << 4);
 	}
 
 	return buffer;
