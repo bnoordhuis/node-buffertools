@@ -11,8 +11,7 @@
 		"url": "http://bnoordhuis.nl/"
 	},
 	"scripts": {
-		"preinstall": "node-waf configure",
-		"install": "node-waf build install"
+		"preinstall": "node-waf configure build"
 	},
 	"repository": {
 		"type": "git",
