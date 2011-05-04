@@ -1,4 +1,4 @@
-buffertools = require('buffertools');
+buffertools = require('./buffertools');
 Buffer = require('buffer').Buffer;
 assert = require('assert');
 
