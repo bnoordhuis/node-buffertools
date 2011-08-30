@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+
+import subprocess
+import shutil
+import sys
+import os
+
+status = subprocess.call('node-waf configure build'.split())
+if status:
+    sys.exit(status)
+
+try:
+    prefix = (path for path in ('build/default', 'build/Release') if os.path.isdir(path)).next()
+except StopIteration:
+    raise OSError("Build path not found")
+
+shutil.copy(prefix + '/buffertools.node', '.')
+shutil.rmtree('build/')
