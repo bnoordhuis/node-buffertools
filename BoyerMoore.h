@@ -77,6 +77,8 @@ const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, c
 		return NULL;
 	if(needle_len == 0)
 		return NULL;
+	if(needle_len > haystack_len)
+		return NULL;
 
 	/*
 	* Initialize heuristics
