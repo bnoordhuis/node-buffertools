@@ -1,4 +1,4 @@
-buffertools = require('./buffertools.node');
+buffertools = require('./build/Release/buffertools.node');
 SlowBuffer = require('buffer').SlowBuffer;
 Buffer = require('buffer').Buffer;
 

@@ -10,9 +10,6 @@
 		"email": "info@bnoordhuis.nl",
 		"url": "http://bnoordhuis.nl/"
 	},
-	"scripts": {
-		"preinstall": "./build-wrapper"
-	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/bnoordhuis/node-buffertools.git"
