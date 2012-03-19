@@ -10,7 +10,8 @@ Easy! With [npm](http://npmjs.org/):
 
 From source:
 
-	node-waf configure build install
+	node-gyp configure
+	node-gyp build
 
 Now you can include the module in your project.
 
