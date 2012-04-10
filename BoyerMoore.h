@@ -35,10 +35,10 @@ static void prepare_badcharacter_heuristic(const uint8_t *str, size_t size, int 
 		result[str[i]] = i;
 }
 
-void prepare_goodsuffix_heuristic(const uint8_t *normal, size_t size, int result[]) {
+void prepare_goodsuffix_heuristic(const uint8_t *normal, const size_t size, int result[]) {
 	const uint8_t *left = normal;
 	const uint8_t *right = left + size;
-	uint8_t reversed[size+1];
+	uint8_t * reversed = new uint8_t[size+1];
 	uint8_t *tmp = reversed + size;
 	size_t i;
 
@@ -47,8 +47,8 @@ void prepare_goodsuffix_heuristic(const uint8_t *normal, size_t size, int result
 	while (left < right)
 		*(--tmp) = *(left++);
 
-	int prefix_normal[size];
-	int prefix_reversed[size];
+	int * prefix_normal = new int[size];
+	int * prefix_reversed = new int[size];
 
 	compute_prefix(normal, size, prefix_normal);
 	compute_prefix(reversed, size, prefix_reversed);
@@ -64,6 +64,10 @@ void prepare_goodsuffix_heuristic(const uint8_t *normal, size_t size, int result
 		if (result[j] > k)
 			result[j] = k;
 	}
+
+	delete[] reversed;
+	delete[] prefix_normal;
+	delete[] prefix_reversed;
 }
 
 /*
@@ -84,7 +88,7 @@ const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, c
 	* Initialize heuristics
 	*/
 	int badcharacter[ALPHABET_SIZE];
-	int goodsuffix[needle_len+1];
+	int * goodsuffix = new int[needle_len+1];
 
 	prepare_badcharacter_heuristic(needle, needle_len, badcharacter);
 	prepare_goodsuffix_heuristic(needle, needle_len, goodsuffix);
@@ -110,10 +114,12 @@ const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, c
 		}
 		else
 		{
+			delete[] goodsuffix;
 			return haystack + s;
 		}
 	}
 
+	delete[] goodsuffix;
 	/* not found */
 	return NULL;
 }
