@@ -339,4 +339,4 @@ void RegisterModule(Handle<Object> target) {
 
 } // anonymous namespace
 
-NODE_MODULE(buffertools, RegisterModule);
+NODE_MODULE(buffertools, RegisterModule)
