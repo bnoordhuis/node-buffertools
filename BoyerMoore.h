@@ -18,12 +18,12 @@ static void compute_prefix(const uint8_t* str, size_t size, int result[]) {
 		while (k > 0 && str[k] != str[q])
 			k = result[k-1];
 
-			if (str[k] == str[q])
-				k++;
+		if (str[k] == str[q])
+			k++;
 
-			result[q] = k;
-		}
+		result[q] = k;
 	}
+}
 
 static void prepare_badcharacter_heuristic(const uint8_t *str, size_t size, int result[ALPHABET_SIZE]) {
 	size_t i;
