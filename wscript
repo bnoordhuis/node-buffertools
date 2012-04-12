@@ -6,6 +6,7 @@ def set_options(ctx):
 def configure(ctx):
 	ctx.check_tool('compiler_cxx')
 	ctx.check_tool('node_addon')
+	ctx.env.set_variant('Release')
 
 def build(ctx):
 	t = ctx.new_task_gen('cxx', 'shlib', 'node_addon')
