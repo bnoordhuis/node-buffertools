@@ -29,8 +29,8 @@ Returns the buffer object so you can chain method calls.
 
 ### Buffer.compare(buffer|string)
 
-Lexicographically compare two buffers. Returns a number smaller than 1
-if a < b, zero if a == b or a number larger than 1 if a > b.
+Lexicographically compare two buffers. Returns a number less than zero
+if a < b, zero if a == b or greater than zero if a > b.
 
 Buffers are considered equal when they are of the same length and contain
 the same binary data.
