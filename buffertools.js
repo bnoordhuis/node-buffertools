@@ -7,8 +7,11 @@ events = require('events');
 util = require('util');
 
 // extend object prototypes
-for (var property in buffertools) {
-	exports[property] = Buffer.prototype[property] = SlowBuffer.prototype[property] = buffertools[property];
+for (var key in buffertools) {
+	var val = buffertools[key];
+	SlowBuffer.prototype[key] = val;
+	Buffer.prototype[key] = val;
+	exports[key] = val;
 }
 
 // bug fix, see https://github.com/bnoordhuis/node-buffertools/issues/#issue/6
