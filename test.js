@@ -55,6 +55,11 @@ assert.equal(-1, b.indexOf('x'));
 assert.equal(7,  b.indexOf('w'));
 assert.equal(0,  b.indexOf('Hello, world!'));
 assert.equal(-1, b.indexOf('Hello, world!1'));
+assert.equal(7,  b.indexOf('world', 7));
+assert.equal(-1, b.indexOf('world', 8));
+assert.equal(7,  b.indexOf('world', -256));
+assert.equal(7,  b.indexOf('world', -6));
+assert.equal(-1, b.indexOf('world', -5));
 
 b = new Buffer("\t \r\n");
 assert.equal('09200d0a', b.toHex());

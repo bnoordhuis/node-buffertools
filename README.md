@@ -73,10 +73,10 @@ Assumes this buffer contains hexadecimal data (packed, no whitespace)
 and decodes it into binary data. Returns a new buffer with the decoded
 content. Throws an exception if non-hexadecimal data is encountered.
 
-### Buffer.indexOf(buffer|string)
+### Buffer.indexOf(buffer|string, [start=0])
 
-Search this buffer for the first occurrence of the argument.
-Returns the zero-based index or -1 if there is no match.
+Search this buffer for the first occurrence of the argument, starting at
+offset `start`. Returns the zero-based index or -1 if there is no match.
 
 ### Buffer.reverse()
 

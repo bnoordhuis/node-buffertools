@@ -162,9 +162,17 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
 		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 		const size_t size = Buffer::Length(buffer);
 
-		const uint8_t* p = boyermoore_search(data, size, data2, size2);
-		const ptrdiff_t offset = p ? (p - data) : -1;
+		int32_t start = args[1]->Int32Value();
 
+		if (start < 0)
+			start = size - std::min<size_t>(size, -start);
+		else if (static_cast<size_t>(start) > size)
+			start = size;
+
+		const uint8_t* p = boyermoore_search(
+			data + start, size - start, data2, size2);
+
+		const ptrdiff_t offset = p ? (p - data) : -1;
 		return scope.Close(Integer::New(offset));
 	}
 };
