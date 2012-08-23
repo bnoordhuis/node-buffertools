@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/bnoordhuis/node-buffertools.png)](http://travis-ci.org/bnoordhuis/node-buffertools)
 # node-buffertools
 
 Utilities for manipulating buffers.
