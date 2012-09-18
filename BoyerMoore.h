@@ -130,10 +130,10 @@ const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, c
 
       if(j > 0)
       {
-        int k = badcharacter[haystack[s+(j-needle_len)-1]];
+        int k = badcharacter[haystack[s+(j-needle_len)-(s == haystack_len ? 1 : 0)]];
         int m;
         if(k < (int)j && (m = j-k-1) > goodsuffix[j])
-          s-= m;
+          s-= m - (s == haystack_len ? 1 : 0);
         else
           s-= goodsuffix[j];
       }
