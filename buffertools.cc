@@ -189,18 +189,10 @@ struct LastIndexOfAction: BinaryAction<LastIndexOfAction> {
 		else if (static_cast<size_t>(start) > size)
 			start = size;
 
-		const uint8_t* p;
-    const uint8_t* prev;
-    while (true) {
-      p = boyermoore_search(data + start, size - start, data2, size2);
-      if (p) {
-        prev = p;
-        start = (prev - data) + 1;
-      } else
-        break;
-    }
+		const uint8_t* p = boyermoore_search(
+			data, (start == 0 ? start : size - start), data2, size2, true);
 
-		const ptrdiff_t offset = prev ? (prev - data) : -1;
+		const ptrdiff_t offset = p ? (p - data) : -1;
 		return scope.Close(Integer::New(offset));
 	}
 };
