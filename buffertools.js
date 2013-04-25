@@ -13,13 +13,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-buffertools = require('./build/Release/buffertools.node');
-SlowBuffer = require('buffer').SlowBuffer;
-Buffer = require('buffer').Buffer;
+var buffertools = require('./build/Release/buffertools.node');
+var SlowBuffer = require('buffer').SlowBuffer;
+var Buffer = require('buffer').Buffer;
 
 // requires node 3.1
-events = require('events');
-util = require('util');
+var events = require('events');
+var util = require('util');
 
 // extend object prototypes
 for (var key in buffertools) {
