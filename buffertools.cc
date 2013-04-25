@@ -68,8 +68,8 @@ template <class Derived> struct BinaryAction {
 					self, (const uint8_t*) Buffer::Data(other), Buffer::Length(other), args, scope);
 		}
 
-		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
-				"Second argument must be a string or a buffer."));
+		Local<String> illegalArgumentException = String::New(
+				"Second argument must be a string or a buffer.");
 		return ThrowException(Exception::TypeError(illegalArgumentException));
 	}
 };
@@ -140,8 +140,8 @@ struct FillAction: UnaryAction<FillAction> {
 			return fill(buffer, data, length);
 		}
 
-		static Persistent<String> illegalArgumentException = Persistent<String>::New(String::New(
-				"Second argument should be either a string, a buffer or an integer."));
+		Local<String> illegalArgumentException = String::New(
+				"Second argument should be either a string, a buffer or an integer.");
 		return ThrowException(Exception::TypeError(illegalArgumentException));
 	}
 };
