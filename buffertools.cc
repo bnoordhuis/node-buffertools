@@ -150,11 +150,17 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 	// O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
 	// XXX won't this trash the L1 cache something awful?
 	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
-		uint8_t* head = (uint8_t*) Buffer::Data(buffer);
-		uint8_t* tail = head + Buffer::Length(buffer) - 1;
+		size_t length = Buffer::Length(buffer);
+		if (length == 0) return buffer;
 
-		// xor swap, just because I can
-		while (head < tail) *head ^= *tail, *tail ^= *head, *head ^= *tail, ++head, --tail;
+		uint8_t* head = (uint8_t*) Buffer::Data(buffer);
+		uint8_t* tail = head + length - 1;
+
+		while (head < tail) {
+			uint8_t tmp = *head;
+			*head++ = *tail;
+			*tail-- = tmp;
+		}
 
 		return buffer;
 	}
