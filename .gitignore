@@ -1,3 +1,4 @@
 /buffertools.node
 /.lock-wscript
 /build/
+node_modules

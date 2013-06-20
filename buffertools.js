@@ -13,7 +13,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-var buffertools = require('./build/Release/buffertools.node');
+var buffertools = require('bindings')('buffertools');
 var SlowBuffer = require('buffer').SlowBuffer;
 var Buffer = require('buffer').Buffer;
 
