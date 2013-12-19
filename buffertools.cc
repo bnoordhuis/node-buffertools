@@ -31,41 +31,73 @@ namespace {
 
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope);
+	Handle<Value> apply(
+			Handle<Object>& buffer,
+			const Arguments& args,
+			uint32_t args_start);
 
 	Handle<Value> operator()(const Arguments& args) {
 		HandleScope scope;
 
-		Local<Object> self = args.This();
-		if (!Buffer::HasInstance(self)) {
+		uint32_t args_start = 0;
+		Local<Object> target = args.This();
+		if (Buffer::HasInstance(target)) {
+			// Invoked as prototype method, no action required.
+		} else if (Buffer::HasInstance(args[0])) {
+			// First argument is the target buffer.
+			args_start = 1;
+			target = args[0]->ToObject();
+		} else {
 			return ThrowException(Exception::TypeError(String::New(
 					"Argument should be a buffer object.")));
 		}
 
-		return static_cast<Derived*>(this)->apply(self, args, scope);
+		return scope.Close(static_cast<Derived*>(this)->apply(target, args, args_start));
 	}
 };
 
 template <class Derived> struct BinaryAction {
-	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope);
+	Handle<Value> apply(
+			Handle<Object>& buffer,
+			const uint8_t* data,
+			size_t size,
+			const Arguments& args,
+			uint32_t args_start);
 
 	Handle<Value> operator()(const Arguments& args) {
 		HandleScope scope;
 
-		Local<Object> self = args.This();
-		if (!Buffer::HasInstance(self)) {
+		uint32_t args_start = 0;
+		Local<Object> target = args.This();
+		if (Buffer::HasInstance(target)) {
+			// Invoked as prototype method, no action required.
+		} else if (Buffer::HasInstance(args[0])) {
+			// First argument is the target buffer.
+			args_start = 1;
+			target = args[0]->ToObject();
+		} else {
 			return ThrowException(Exception::TypeError(String::New(
 					"Argument should be a buffer object.")));
 		}
 
-		if (args[0]->IsString()) {
-			String::Utf8Value s(args[0]->ToString());
-			return static_cast<Derived*>(this)->apply(self, (uint8_t*) *s, s.length(), args, scope);
+		if (args[args_start]->IsString()) {
+			String::Utf8Value s(args[args_start]);
+			return scope.Close(static_cast<Derived*>(this)->apply(
+					target,
+					(const uint8_t*) *s,
+					s.length(),
+					args,
+					args_start));
 		}
-		if (Buffer::HasInstance(args[0])) {
-			Local<Object> other = args[0]->ToObject();
-			return static_cast<Derived*>(this)->apply(
-					self, (const uint8_t*) Buffer::Data(other), Buffer::Length(other), args, scope);
+
+		if (Buffer::HasInstance(args[args_start])) {
+			Local<Object> other = args[args_start]->ToObject();
+			return scope.Close(static_cast<Derived*>(this)->apply(
+					target,
+					(const uint8_t*) Buffer::Data(other),
+					Buffer::Length(other),
+					args,
+					args_start));
 		}
 
 		Local<String> illegalArgumentException = String::New(
@@ -116,25 +148,25 @@ int compare(Handle<Object>& buffer, const uint8_t* data2, size_t length2) {
 // actions
 //
 struct ClearAction: UnaryAction<ClearAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
 		return clear(buffer, 0);
 	}
 };
 
 struct FillAction: UnaryAction<FillAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
-		if (args[0]->IsInt32()) {
-			int c = args[0]->ToInt32()->Int32Value();
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
+		if (args[args_start]->IsInt32()) {
+			int c = args[args_start]->Int32Value();
 			return clear(buffer, c);
 		}
 
-		if (args[0]->IsString()) {
-			String::Utf8Value s(args[0]->ToString());
+		if (args[args_start]->IsString()) {
+			String::Utf8Value s(args[args_start]);
 			return fill(buffer, *s, s.length());
 		}
 
-		if (Buffer::HasInstance(args[0])) {
-			Handle<Object> other = args[0]->ToObject();
+		if (Buffer::HasInstance(args[args_start])) {
+			Handle<Object> other = args[args_start]->ToObject();
 			size_t length = Buffer::Length(other);
 			uint8_t* data = (uint8_t*) Buffer::Data(other);
 			return fill(buffer, data, length);
@@ -149,7 +181,7 @@ struct FillAction: UnaryAction<FillAction> {
 struct ReverseAction: UnaryAction<ReverseAction> {
 	// O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
 	// XXX won't this trash the L1 cache something awful?
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
 		uint8_t* head = (uint8_t*) Buffer::Data(buffer);
 		uint8_t* tail = head + Buffer::Length(buffer) - 1;
 
@@ -166,23 +198,23 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 };
 
 struct EqualsAction: BinaryAction<EqualsAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, uint32_t args_start) {
 		return compare(buffer, data, size) == 0 ? True() : False();
 	}
 };
 
 struct CompareAction: BinaryAction<CompareAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, HandleScope& scope) {
-		return scope.Close(Integer::New(compare(buffer, data, size)));
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, uint32_t args_start) {
+		return Integer::New(compare(buffer, data, size));
 	}
 };
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data2, size_t size2, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data2, size_t size2, const Arguments& args, uint32_t args_start) {
 		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 		const size_t size = Buffer::Length(buffer);
 
-		int32_t start = args[1]->Int32Value();
+		int32_t start = args[args_start + 1]->Int32Value();
 
 		if (start < 0)
 			start = size - std::min<size_t>(size, -start);
@@ -193,7 +225,7 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
 			data + start, size - start, data2, size2);
 
 		const ptrdiff_t offset = p ? (p - data) : -1;
-		return scope.Close(Integer::New(offset));
+		return Integer::New(offset);
 	}
 };
 
@@ -211,7 +243,7 @@ static char fromHexTable[] = {
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
 
-inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, const Arguments& args, HandleScope& scope) {
+inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, const Arguments& args, uint32_t args_start) {
 	if (size & 1) {
 		return ThrowException(Exception::Error(String::New(
 				"Odd string length, this is not hexadecimal data.")));
@@ -242,15 +274,15 @@ inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, con
 }
 
 struct FromHexAction: UnaryAction<FromHexAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
 		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 		size_t length = Buffer::Length(buffer);
-		return decodeHex(data, length, args, scope);
+		return decodeHex(data, length, args, args_start);
 	}
 };
 
 struct ToHexAction: UnaryAction<ToHexAction> {
-	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, HandleScope& scope) {
+	Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
 		const size_t size = Buffer::Length(buffer);
 		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
 
@@ -265,7 +297,7 @@ struct ToHexAction: UnaryAction<ToHexAction> {
 			s[i * 2 + 1] = toHexTable[c & 15];
 		}
 
-		return scope.Close(String::New(s.c_str(), s.size()));
+		return String::New(s.c_str(), s.size());
 	}
 };
 
@@ -332,7 +364,7 @@ Handle<Value> Concat(const Arguments& args) {
 	for (int index = 0, length = args.Length(); index < length; ++index) {
 		Local<Value> arg = args[index];
 		if (arg->IsString()) {
-			String::Utf8Value v(arg->ToString());
+			String::Utf8Value v(arg);
 			memcpy(s, *v, v.length());
 			s += v.length();
 		}

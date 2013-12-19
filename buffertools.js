@@ -21,19 +21,29 @@ var Buffer = require('buffer').Buffer;
 var events = require('events');
 var util = require('util');
 
-// extend object prototypes
-for (var key in buffertools) {
-	var val = buffertools[key];
-	SlowBuffer.prototype[key] = val;
-	Buffer.prototype[key] = val;
-	exports[key] = val;
-}
-
-// bug fix, see https://github.com/bnoordhuis/node-buffertools/issues/#issue/6
-Buffer.prototype.concat = SlowBuffer.prototype.concat = function() {
-	var args = [this].concat(Array.prototype.slice.call(arguments));
-	return buffertools.concat.apply(buffertools, args);
+exports.extend = function() {
+	var receivers;
+	if (arguments.length > 0) {
+		receivers = Array.prototype.slice.call(arguments);
+	} else if (typeof SlowBuffer === 'function') {
+		receivers = [Buffer.prototype, SlowBuffer.prototype];
+	} else {
+		receivers = [Buffer.prototype];
+	}
+	for (var i = 0, n = receivers.length; i < n; i += 1) {
+		var receiver = receivers[i];
+		for (var key in buffertools) {
+			receiver[key] = buffertools[key];
+		}
+		if (receiver !== exports) {
+			receiver.concat = function() {
+				var args = [this].concat(Array.prototype.slice.call(arguments));
+				return buffertools.concat.apply(buffertools, args);
+			};
+		}
+	}
 };
+exports.extend(exports);
 
 //
 // WritableBufferStream

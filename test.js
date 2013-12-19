@@ -19,6 +19,9 @@ var assert = require('assert');
 
 var WritableBufferStream = buffertools.WritableBufferStream;
 
+// Extend Buffer.prototype and SlowBuffer.prototype.
+buffertools.extend();
+
 // these trigger the code paths for UnaryAction and BinaryAction
 assert.throws(function() { buffertools.clear({}); });
 assert.throws(function() { buffertools.equals({}, {}); });
