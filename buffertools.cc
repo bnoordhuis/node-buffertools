@@ -153,8 +153,13 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 		uint8_t* head = (uint8_t*) Buffer::Data(buffer);
 		uint8_t* tail = head + Buffer::Length(buffer) - 1;
 
-		// xor swap, just because I can
-		while (head < tail) *head ^= *tail, *tail ^= *head, *head ^= *tail, ++head, --tail;
+		while (head < tail) {
+			uint8_t t = *head;
+			*head = *tail;
+			*tail = t;
+			++head;
+			--tail;
+		}
 
 		return buffer;
 	}
