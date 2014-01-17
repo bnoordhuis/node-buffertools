@@ -13,16 +13,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "v8.h"
+#include "BoyerMoore.h"
 #include "node.h"
 #include "node_buffer.h"
+#include "v8.h"
 
-#include <stdint.h>
-#include <sstream>
+#include <algorithm>
 #include <cstring>
+#include <sstream>
+#include <stdint.h>
 #include <string>
-
-#include "BoyerMoore.h"
 
 using namespace v8;
 using namespace node;

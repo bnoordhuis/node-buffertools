@@ -1,7 +1,7 @@
 {
 	"name": "buffertools",
 	"main": "buffertools",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"keywords": ["buffer", "buffers"],
 	"description": "Working with node.js buffers made easy.",
 	"homepage": "https://github.com/bnoordhuis/node-buffertools",
