@@ -229,6 +229,34 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
 	}
 };
 
+struct LastIndexOfAction: BinaryAction<LastIndexOfAction> {
+	Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data2, size_t size2, const Arguments& args, HandleScope& scope) {
+		const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
+		const size_t size = Buffer::Length(buffer);
+    size_t len = 0;
+		int32_t start;
+
+    if (args[1]->IsInt32()) {
+      start = args[1]->Int32Value();
+
+      if (start < 0)
+        start = size - std::min<size_t>(size, -start);
+      else if (static_cast<size_t>(start) > size)
+        start = size;
+
+      if (start > 0)
+        len = size - start;
+    } else
+      len = size;
+
+		const uint8_t* p = boyermoore_search(
+			data, len, data2, size2, true);
+
+		const ptrdiff_t offset = p ? (p - data) : -1;
+		return scope.Close(Integer::New(offset));
+	}
+};
+
 static char toHexTable[] = "0123456789abcdef";
 
 // CHECKME is this cache efficient?
@@ -328,6 +356,10 @@ Handle<Value> IndexOf(const Arguments& args) {
 	return IndexOfAction()(args);
 }
 
+Handle<Value> LastIndexOf(const Arguments& args) {
+	return LastIndexOfAction()(args);
+}
+
 Handle<Value> FromHex(const Arguments& args) {
 	return FromHexAction()(args);
 }
@@ -393,6 +425,7 @@ void RegisterModule(Handle<Object> target) {
 	target->Set(String::NewSymbol("equals"),  FunctionTemplate::New(Equals)->GetFunction());
 	target->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
 	target->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
+  target->Set(String::NewSymbol("lastIndexOf"), FunctionTemplate::New(LastIndexOf)->GetFunction());
 	target->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
 	target->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
 }

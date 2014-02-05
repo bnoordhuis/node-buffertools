@@ -73,7 +73,7 @@ void prepare_goodsuffix_heuristic(const uint8_t *normal, const size_t size, int 
 /*
 * Boyer-Moore search algorithm
 */
-const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, const uint8_t *needle, size_t needle_len) {
+const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, const uint8_t *needle, size_t needle_len, bool reverse = false) {
 	/*
 	* Simple checks
 	*/
@@ -96,28 +96,54 @@ const uint8_t *boyermoore_search(const uint8_t *haystack, size_t haystack_len, c
 	/*
 	* Boyer-Moore search
 	*/
-	size_t s = 0;
-	while(s <= (haystack_len - needle_len))
-	{
-		size_t j = needle_len;
-		while(j > 0 && needle[j-1] == haystack[s+j-1])
-			j--;
+  size_t len = haystack_len - needle_len;
+  if (!reverse) {
+    size_t s = 0;
+    while(s <= len)
+    {
+      size_t j = needle_len;
+      while(j > 0 && needle[j-1] == haystack[s+j-1])
+        j--;
 
-		if(j > 0)
-		{
-			int k = badcharacter[haystack[s+j-1]];
-			int m;
-			if(k < (int)j && (m = j-k-1) > goodsuffix[j])
-				s+= m;
-			else
-				s+= goodsuffix[j];
-		}
-		else
-		{
-			delete[] goodsuffix;
-			return haystack + s;
-		}
-	}
+      if(j > 0)
+      {
+        int k = badcharacter[haystack[s+j-1]];
+        int m;
+        if(k < (int)j && (m = j-k-1) > goodsuffix[j])
+          s+= m;
+        else
+          s+= goodsuffix[j];
+      }
+      else
+      {
+        delete[] goodsuffix;
+        return haystack + s;
+      }
+    }
+  } else {
+    ptrdiff_t s = haystack_len;
+    while(s >= 0)
+    {
+      size_t j = needle_len;
+      while(j > 0 && needle[j-1] == haystack[s+(j-needle_len)-(s == haystack_len ? 1 : 0)])
+        --j;
+
+      if(j > 0)
+      {
+        int k = badcharacter[haystack[s+(j-needle_len)-(s == haystack_len ? 1 : 0)]];
+        int m;
+        if(k < (int)j && (m = j-k-1) > goodsuffix[j])
+          s-= m - (s == haystack_len ? 1 : 0);
+        else
+          s-= goodsuffix[j];
+      }
+      else
+      {
+        delete[] goodsuffix;
+        return haystack + (s - needle_len) + (s == haystack_len ? 0 : 1);
+      }
+    }
+  }
 
 	delete[] goodsuffix;
 	/* not found */
