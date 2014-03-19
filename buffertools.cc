@@ -16,84 +16,141 @@
 #include "BoyerMoore.h"
 #include "node.h"
 #include "node_buffer.h"
+#include "node_version.h"
 #include "v8.h"
 
 #include <algorithm>
 #include <cstring>
-#include <sstream>
 #include <stdint.h>
 #include <string>
 
 namespace {
 
-using node::Buffer;
-using v8::Arguments;
 using v8::Exception;
-using v8::False;
-using v8::FunctionTemplate;
 using v8::Handle;
-using v8::HandleScope;
-using v8::Integer;
 using v8::Local;
 using v8::Object;
 using v8::String;
-using v8::True;
 using v8::Value;
+
+#if NODE_MAJOR_VERSION > 0 || NODE_MINOR_VERSION > 10
+# define UNI_BOOLEAN_NEW(value)                                               \
+    v8::Boolean::New(args.GetIsolate(), value)
+# define UNI_BUFFER_NEW(size)                                                 \
+    node::Buffer::New(args.GetIsolate(), size)
+# define UNI_CONST_ARGUMENTS(name)                                            \
+    const v8::FunctionCallbackInfo<v8::Value>& name
+# define UNI_ESCAPE(value)                                                    \
+    return handle_scope.Escape(value)
+# define UNI_ESCAPABLE_HANDLESCOPE()                                          \
+    v8::EscapableHandleScope handle_scope(args.GetIsolate())
+# define UNI_FUNCTION_CALLBACK(name)                                          \
+    void name(const v8::FunctionCallbackInfo<v8::Value>& args)
+# define UNI_HANDLESCOPE()                                                    \
+    v8::HandleScope handle_scope(args.GetIsolate())
+# define UNI_INTEGER_NEW(value)                                               \
+    v8::Integer::New(args.GetIsolate(), value)
+# define UNI_RETURN(value)                                                    \
+    args.GetReturnValue().Set(value)
+# define UNI_STRING_EMPTY()                                                   \
+    v8::String::Empty(args.GetIsolate())
+# define UNI_STRING_NEW(string, size)                                         \
+    v8::String::NewFromUtf8(args.GetIsolate(),                                \
+                            string,                                           \
+                            v8::String::kNormalString,                        \
+                            size)
+# define UNI_THROW_AND_RETURN(type, message)                                  \
+    do {                                                                      \
+      args.GetIsolate()->ThrowException(                                      \
+          type(v8::String::NewFromUtf8(args.GetIsolate(), message)));         \
+      return;                                                                 \
+    } while (0)
+# define UNI_THROW_EXCEPTION(type, message)                                   \
+    args.GetIsolate()->ThrowException(                                        \
+        type(v8::String::NewFromUtf8(args.GetIsolate(), message)));
+#else  // NODE_MAJOR_VERSION > 0 || NODE_MINOR_VERSION > 10
+# define UNI_BOOLEAN_NEW(value)                                               \
+    v8::Local<v8::Boolean>::New(v8::Boolean::New(value))
+# define UNI_BUFFER_NEW(size)                                                 \
+    v8::Local<v8::Object>::New(node::Buffer::New(size)->handle_)
+# define UNI_CONST_ARGUMENTS(name)                                            \
+    const v8::Arguments& name
+# define UNI_ESCAPE(value)                                                    \
+    return handle_scope.Close(value)
+# define UNI_ESCAPABLE_HANDLESCOPE()                                          \
+    v8::HandleScope handle_scope
+# define UNI_FUNCTION_CALLBACK(name)                                          \
+    v8::Handle<v8::Value> name(const v8::Arguments& args)
+# define UNI_HANDLESCOPE()                                                    \
+    v8::HandleScope handle_scope
+# define UNI_INTEGER_NEW(value)                                               \
+    v8::Integer::New(value)
+# define UNI_RETURN(value)                                                    \
+    return handle_scope.Close(value)
+# define UNI_STRING_EMPTY()                                                   \
+    v8::String::Empty()
+# define UNI_STRING_NEW(string, size)                                         \
+    v8::String::New(string, size)
+# define UNI_THROW_AND_RETURN(type, message)                                  \
+    return v8::ThrowException(v8::String::New(message))
+# define UNI_THROW_EXCEPTION(type, message)                                   \
+    v8::ThrowException(v8::String::New(message))
+#endif  // NODE_MAJOR_VERSION > 0 || NODE_MINOR_VERSION > 10
 
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
-  Handle<Value> apply(
-      Handle<Object>& buffer,
-      const Arguments& args,
-      uint32_t args_start);
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start);
 
-  Handle<Value> operator()(const Arguments& args) {
-    HandleScope scope;
+  Local<Value> operator()(UNI_CONST_ARGUMENTS(args)) {
+    UNI_ESCAPABLE_HANDLESCOPE();
 
     uint32_t args_start = 0;
     Local<Object> target = args.This();
-    if (Buffer::HasInstance(target)) {
+    if (node::Buffer::HasInstance(target)) {
       // Invoked as prototype method, no action required.
-    } else if (Buffer::HasInstance(args[0])) {
+    } else if (node::Buffer::HasInstance(args[0])) {
       // First argument is the target buffer.
       args_start = 1;
       target = args[0]->ToObject();
     } else {
-      return ThrowException(Exception::TypeError(String::New(
-          "Argument should be a buffer object.")));
+      UNI_THROW_EXCEPTION(Exception::TypeError,
+                          "Argument should be a buffer object.");
+      return Local<Value>();
     }
 
-    return scope.Close(static_cast<Derived*>(this)->apply(target, args, args_start));
+    UNI_ESCAPE(static_cast<Derived*>(this)->apply(target, args, args_start));
   }
 };
 
 template <class Derived> struct BinaryAction {
-  Handle<Value> apply(
-      Handle<Object>& buffer,
-      const uint8_t* data,
-      size_t size,
-      const Arguments& args,
-      uint32_t args_start);
+  Local<Value> apply(Local<Object> buffer,
+                     const uint8_t* data,
+                     size_t size,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start);
 
-  Handle<Value> operator()(const Arguments& args) {
-    HandleScope scope;
+  Local<Value> operator()(UNI_CONST_ARGUMENTS(args)) {
+    UNI_ESCAPABLE_HANDLESCOPE();
 
     uint32_t args_start = 0;
     Local<Object> target = args.This();
-    if (Buffer::HasInstance(target)) {
+    if (node::Buffer::HasInstance(target)) {
       // Invoked as prototype method, no action required.
-    } else if (Buffer::HasInstance(args[0])) {
+    } else if (node::Buffer::HasInstance(args[0])) {
       // First argument is the target buffer.
       args_start = 1;
       target = args[0]->ToObject();
     } else {
-      return ThrowException(Exception::TypeError(String::New(
-          "Argument should be a buffer object.")));
+      UNI_THROW_EXCEPTION(Exception::TypeError,
+                          "Argument should be a buffer object.");
+      return Local<Value>();
     }
 
     if (args[args_start]->IsString()) {
       String::Utf8Value s(args[args_start]);
-      return scope.Close(static_cast<Derived*>(this)->apply(
+      UNI_ESCAPE(static_cast<Derived*>(this)->apply(
           target,
           (const uint8_t*) *s,
           s.length(),
@@ -101,35 +158,35 @@ template <class Derived> struct BinaryAction {
           args_start));
     }
 
-    if (Buffer::HasInstance(args[args_start])) {
+    if (node::Buffer::HasInstance(args[args_start])) {
       Local<Object> other = args[args_start]->ToObject();
-      return scope.Close(static_cast<Derived*>(this)->apply(
+      UNI_ESCAPE(static_cast<Derived*>(this)->apply(
           target,
-          (const uint8_t*) Buffer::Data(other),
-          Buffer::Length(other),
+          (const uint8_t*) node::Buffer::Data(other),
+          node::Buffer::Length(other),
           args,
           args_start));
     }
 
-    Local<String> illegalArgumentException = String::New(
-        "Second argument must be a string or a buffer.");
-    return ThrowException(Exception::TypeError(illegalArgumentException));
+    UNI_THROW_EXCEPTION(Exception::TypeError,
+                        "Second argument must be a string or a buffer.");
+    return Local<Value>();
   }
 };
 
 //
 // helper functions
 //
-Handle<Value> clear(Handle<Object>& buffer, int c) {
-  size_t length = Buffer::Length(buffer);
-  uint8_t* data = (uint8_t*) Buffer::Data(buffer);
+Local<Value> clear(Local<Object> buffer, int c) {
+  size_t length = node::Buffer::Length(buffer);
+  uint8_t* data = (uint8_t*) node::Buffer::Data(buffer);
   memset(data, c, length);
   return buffer;
 }
 
-Handle<Value> fill(Handle<Object>& buffer, void* pattern, size_t size) {
-  size_t length = Buffer::Length(buffer);
-  uint8_t* data = (uint8_t*) Buffer::Data(buffer);
+Local<Value> fill(Local<Object> buffer, void* pattern, size_t size) {
+  size_t length = node::Buffer::Length(buffer);
+  uint8_t* data = (uint8_t*) node::Buffer::Data(buffer);
 
   if (size >= length) {
     memcpy(data, pattern, length);
@@ -145,13 +202,13 @@ Handle<Value> fill(Handle<Object>& buffer, void* pattern, size_t size) {
   return buffer;
 }
 
-int compare(Handle<Object>& buffer, const uint8_t* data2, size_t length2) {
-  size_t length = Buffer::Length(buffer);
+int compare(Local<Object> buffer, const uint8_t* data2, size_t length2) {
+  size_t length = node::Buffer::Length(buffer);
   if (length != length2) {
     return length > length2 ? 1 : -1;
   }
 
-  const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
+  const uint8_t* data = (const uint8_t*) node::Buffer::Data(buffer);
   return memcmp(data, data2, length);
 }
 
@@ -159,13 +216,17 @@ int compare(Handle<Object>& buffer, const uint8_t* data2, size_t length2) {
 // actions
 //
 struct ClearAction: UnaryAction<ClearAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
     return clear(buffer, 0);
   }
 };
 
 struct FillAction: UnaryAction<FillAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
     if (args[args_start]->IsInt32()) {
       int c = args[args_start]->Int32Value();
       return clear(buffer, c);
@@ -176,25 +237,28 @@ struct FillAction: UnaryAction<FillAction> {
       return fill(buffer, *s, s.length());
     }
 
-    if (Buffer::HasInstance(args[args_start])) {
-      Handle<Object> other = args[args_start]->ToObject();
-      size_t length = Buffer::Length(other);
-      uint8_t* data = (uint8_t*) Buffer::Data(other);
+    if (node::Buffer::HasInstance(args[args_start])) {
+      Local<Object> other = args[args_start]->ToObject();
+      size_t length = node::Buffer::Length(other);
+      uint8_t* data = (uint8_t*) node::Buffer::Data(other);
       return fill(buffer, data, length);
     }
 
-    Local<String> illegalArgumentException = String::New(
-        "Second argument should be either a string, a buffer or an integer.");
-    return ThrowException(Exception::TypeError(illegalArgumentException));
+    UNI_THROW_EXCEPTION(Exception::TypeError,
+                        "Second argument should be either a string, a buffer "
+                        "or an integer.");
+    return Local<Value>();
   }
 };
 
 struct ReverseAction: UnaryAction<ReverseAction> {
   // O(n/2) for all cases which is okay, might be optimized some more with whole-word swaps
   // XXX won't this trash the L1 cache something awful?
-  Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
-    uint8_t* head = (uint8_t*) Buffer::Data(buffer);
-    uint8_t* tail = head + Buffer::Length(buffer) - 1;
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    uint8_t* head = (uint8_t*) node::Buffer::Data(buffer);
+    uint8_t* tail = head + node::Buffer::Length(buffer) - 1;
 
     while (head < tail) {
       uint8_t t = *head;
@@ -209,21 +273,33 @@ struct ReverseAction: UnaryAction<ReverseAction> {
 };
 
 struct EqualsAction: BinaryAction<EqualsAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, uint32_t args_start) {
-    return compare(buffer, data, size) == 0 ? True() : False();
+  Local<Value> apply(Local<Object> buffer,
+                     const uint8_t* data,
+                     size_t size,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    return UNI_BOOLEAN_NEW(compare(buffer, data, size) == 0);
   }
 };
 
 struct CompareAction: BinaryAction<CompareAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data, size_t size, const Arguments& args, uint32_t args_start) {
-    return Integer::New(compare(buffer, data, size));
+  Local<Value> apply(Local<Object> buffer,
+                     const uint8_t* data,
+                     size_t size,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    return UNI_INTEGER_NEW(compare(buffer, data, size));
   }
 };
 
 struct IndexOfAction: BinaryAction<IndexOfAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const uint8_t* data2, size_t size2, const Arguments& args, uint32_t args_start) {
-    const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
-    const size_t size = Buffer::Length(buffer);
+  Local<Value> apply(Local<Object> buffer,
+                     const uint8_t* data2,
+                     size_t size2,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    const uint8_t* data = (const uint8_t*) node::Buffer::Data(buffer);
+    const size_t size = node::Buffer::Length(buffer);
 
     int32_t start = args[args_start + 1]->Int32Value();
 
@@ -236,7 +312,7 @@ struct IndexOfAction: BinaryAction<IndexOfAction> {
       data + start, size - start, data2, size2);
 
     const ptrdiff_t offset = p ? (p - data) : -1;
-    return Integer::New(offset);
+    return UNI_INTEGER_NEW(offset);
   }
 };
 
@@ -254,28 +330,31 @@ static char fromHexTable[] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 };
 
-inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, const Arguments& args, uint32_t args_start) {
+inline Local<Value> decodeHex(const uint8_t* const data,
+                              const size_t size,
+                              UNI_CONST_ARGUMENTS(args),
+                              uint32_t args_start) {
   if (size & 1) {
-    return ThrowException(Exception::Error(String::New(
-        "Odd string length, this is not hexadecimal data.")));
+    UNI_THROW_EXCEPTION(Exception::Error,
+                        "Odd string length, this is not hexadecimal data.");
+    return Local<Value>();
   }
 
   if (size == 0) {
-    return String::Empty();
+    return UNI_STRING_EMPTY();
   }
 
-  Handle<Object>& buffer = Buffer::New(size / 2)->handle_;
-
+  Local<Object> buffer = UNI_BUFFER_NEW(size / 2);
   uint8_t *src = (uint8_t *) data;
-  uint8_t *dst = (uint8_t *) (const uint8_t*) Buffer::Data(buffer);
+  uint8_t *dst = (uint8_t *) (const uint8_t*) node::Buffer::Data(buffer);
 
   for (size_t i = 0; i < size; i += 2) {
     int a = fromHexTable[*src++];
     int b = fromHexTable[*src++];
 
     if (a == -1 || b == -1) {
-      return ThrowException(Exception::Error(String::New(
-          "This is not hexadecimal data.")));
+      UNI_THROW_EXCEPTION(Exception::Error, "This is not hexadecimal data.");
+      return Local<Value>();
     }
 
     *dst++ = b | (a << 4);
@@ -285,20 +364,24 @@ inline Handle<Value> decodeHex(const uint8_t* const data, const size_t size, con
 }
 
 struct FromHexAction: UnaryAction<FromHexAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
-    const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
-    size_t length = Buffer::Length(buffer);
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    const uint8_t* data = (const uint8_t*) node::Buffer::Data(buffer);
+    size_t length = node::Buffer::Length(buffer);
     return decodeHex(data, length, args, args_start);
   }
 };
 
 struct ToHexAction: UnaryAction<ToHexAction> {
-  Handle<Value> apply(Handle<Object>& buffer, const Arguments& args, uint32_t args_start) {
-    const size_t size = Buffer::Length(buffer);
-    const uint8_t* data = (const uint8_t*) Buffer::Data(buffer);
+  Local<Value> apply(Local<Object> buffer,
+                     UNI_CONST_ARGUMENTS(args),
+                     uint32_t args_start) {
+    const size_t size = node::Buffer::Length(buffer);
+    const uint8_t* data = (const uint8_t*) node::Buffer::Data(buffer);
 
     if (size == 0) {
-      return String::Empty();
+      return UNI_STRING_EMPTY();
     }
 
     std::string s(size * 2, 0);
@@ -308,47 +391,30 @@ struct ToHexAction: UnaryAction<ToHexAction> {
       s[i * 2 + 1] = toHexTable[c & 15];
     }
 
-    return String::New(s.c_str(), s.size());
+    return UNI_STRING_NEW(s.c_str(), s.size());
   }
 };
 
 //
 // V8 function callbacks
 //
-Handle<Value> Clear(const Arguments& args) {
-  return ClearAction()(args);
-}
+#define V(name)                                                               \
+  UNI_FUNCTION_CALLBACK(name) {                                               \
+    UNI_HANDLESCOPE();                                                        \
+    UNI_RETURN(name ## Action()(args));                                       \
+  }
+V(Clear)
+V(Compare)
+V(Equals)
+V(Fill)
+V(FromHex)
+V(IndexOf)
+V(Reverse)
+V(ToHex)
+#undef V
 
-Handle<Value> Fill(const Arguments& args) {
-  return FillAction()(args);
-}
-
-Handle<Value> Reverse(const Arguments& args) {
-  return ReverseAction()(args);
-}
-
-Handle<Value> Equals(const Arguments& args) {
-  return EqualsAction()(args);
-}
-
-Handle<Value> Compare(const Arguments& args) {
-  return CompareAction()(args);
-}
-
-Handle<Value> IndexOf(const Arguments& args) {
-  return IndexOfAction()(args);
-}
-
-Handle<Value> FromHex(const Arguments& args) {
-  return FromHexAction()(args);
-}
-
-Handle<Value> ToHex(const Arguments& args) {
-  return ToHexAction()(args);
-}
-
-Handle<Value> Concat(const Arguments& args) {
-  HandleScope scope;
+UNI_FUNCTION_CALLBACK(Concat) {
+  UNI_HANDLESCOPE();
 
   size_t size = 0;
   for (int index = 0, length = args.Length(); index < length; ++index) {
@@ -357,20 +423,21 @@ Handle<Value> Concat(const Arguments& args) {
       // Utf8Length() because we need the length in bytes, not characters
       size += arg->ToString()->Utf8Length();
     }
-    else if (Buffer::HasInstance(arg)) {
-      size += Buffer::Length(arg->ToObject());
+    else if (node::Buffer::HasInstance(arg)) {
+      size += node::Buffer::Length(arg->ToObject());
     }
     else {
-      std::stringstream s;
-      s << "Argument #" << index << " is neither a string nor a buffer object.";
-      return ThrowException(
-          Exception::TypeError(
-              String::New(s.str().c_str())));
+      char errmsg[256];
+      snprintf(errmsg,
+               sizeof(errmsg),
+               "Argument #%lu is neither a string nor a buffer object.",
+               static_cast<unsigned long>(index));
+      UNI_THROW_AND_RETURN(Exception::TypeError, errmsg);
     }
   }
 
-  Buffer& dst = *Buffer::New(size);
-  uint8_t* s = (uint8_t*) Buffer::Data(dst.handle_);
+  Local<Object> buffer = UNI_BUFFER_NEW(size);
+  uint8_t* s = (uint8_t*) node::Buffer::Data(buffer);
 
   for (int index = 0, length = args.Length(); index < length; ++index) {
     Local<Value> arg = args[index];
@@ -379,33 +446,34 @@ Handle<Value> Concat(const Arguments& args) {
       memcpy(s, *v, v.length());
       s += v.length();
     }
-    else if (Buffer::HasInstance(arg)) {
+    else if (node::Buffer::HasInstance(arg)) {
       Local<Object> b = arg->ToObject();
-      const uint8_t* data = (const uint8_t*) Buffer::Data(b);
-      size_t length = Buffer::Length(b);
+      const uint8_t* data = (const uint8_t*) node::Buffer::Data(b);
+      size_t length = node::Buffer::Length(b);
       memcpy(s, data, length);
       s += length;
     }
     else {
-      return ThrowException(Exception::Error(String::New(
-          "Congratulations! You have run into a bug: argument is neither a string nor a buffer object. "
-          "Please make the world a better place and report it.")));
+      UNI_THROW_AND_RETURN(Exception::Error,
+                           "Congratulations! You have run into a bug: argument "
+                           "is neither a string nor a buffer object.  Please "
+                           "make the world a better place and report it.");
     }
   }
 
-  return scope.Close(dst.handle_);
+  UNI_RETURN(buffer);
 }
 
 void RegisterModule(Handle<Object> target) {
-  target->Set(String::NewSymbol("concat"),  FunctionTemplate::New(Concat)->GetFunction());
-  target->Set(String::NewSymbol("fill"),    FunctionTemplate::New(Fill)->GetFunction());
-  target->Set(String::NewSymbol("clear"),   FunctionTemplate::New(Clear)->GetFunction());
-  target->Set(String::NewSymbol("reverse"), FunctionTemplate::New(Reverse)->GetFunction());
-  target->Set(String::NewSymbol("equals"),  FunctionTemplate::New(Equals)->GetFunction());
-  target->Set(String::NewSymbol("compare"), FunctionTemplate::New(Compare)->GetFunction());
-  target->Set(String::NewSymbol("indexOf"), FunctionTemplate::New(IndexOf)->GetFunction());
-  target->Set(String::NewSymbol("fromHex"), FunctionTemplate::New(FromHex)->GetFunction());
-  target->Set(String::NewSymbol("toHex"),   FunctionTemplate::New(ToHex)->GetFunction());
+  NODE_SET_METHOD(target, "clear", Clear);
+  NODE_SET_METHOD(target, "compare", Compare);
+  NODE_SET_METHOD(target, "concat", Concat);
+  NODE_SET_METHOD(target, "equals", Equals);
+  NODE_SET_METHOD(target, "fill", Fill);
+  NODE_SET_METHOD(target, "fromHex", FromHex);
+  NODE_SET_METHOD(target, "indexOf", IndexOf);
+  NODE_SET_METHOD(target, "reverse", Reverse);
+  NODE_SET_METHOD(target, "toHex", ToHex);
 }
 
 } // anonymous namespace
