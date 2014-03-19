@@ -24,10 +24,21 @@
 #include <stdint.h>
 #include <string>
 
-using namespace v8;
-using namespace node;
-
 namespace {
+
+using node::Buffer;
+using v8::Arguments;
+using v8::Exception;
+using v8::False;
+using v8::FunctionTemplate;
+using v8::Handle;
+using v8::HandleScope;
+using v8::Integer;
+using v8::Local;
+using v8::Object;
+using v8::String;
+using v8::True;
+using v8::Value;
 
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
