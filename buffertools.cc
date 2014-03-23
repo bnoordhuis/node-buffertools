@@ -258,14 +258,14 @@ struct ReverseAction: UnaryAction<ReverseAction> {
                      UNI_CONST_ARGUMENTS(args),
                      uint32_t args_start) {
     uint8_t* head = (uint8_t*) node::Buffer::Data(buffer);
-    uint8_t* tail = head + node::Buffer::Length(buffer) - 1;
+    uint8_t* tail = head + node::Buffer::Length(buffer);
 
     while (head < tail) {
+      --tail;
       uint8_t t = *head;
       *head = *tail;
       *tail = t;
       ++head;
-      --tail;
     }
 
     return buffer;
