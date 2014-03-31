@@ -20,8 +20,10 @@
 #include "v8.h"
 
 #include <algorithm>
-#include <cstring>
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <string>
 
 namespace {
@@ -96,6 +98,24 @@ using v8::Value;
 # define UNI_THROW_EXCEPTION(type, message)                                   \
     v8::ThrowException(v8::String::New(message))
 #endif  // NODE_MAJOR_VERSION > 0 || NODE_MINOR_VERSION > 10
+
+#if defined(_WIN32)
+// Emulate snprintf() on windows, _snprintf() doesn't zero-terminate
+// the buffer on overflow.
+inline int snprintf(char* buf, size_t size, const char* fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  const int len = _vsprintf_p(buf, size, fmt, ap);
+  va_end(ap);
+  if (len < 0) {
+    abort();
+  }
+  if (static_cast<unsigned>(len) >= size && size > 0) {
+    buf[size - 1] = '\0';
+  }
+  return len;
+}
+#endif
 
 // this is an application of the Curiously Recurring Template Pattern
 template <class Derived> struct UnaryAction {
