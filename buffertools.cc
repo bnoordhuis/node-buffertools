@@ -38,8 +38,13 @@ using v8::Value;
 #if NODE_MAJOR_VERSION > 0 || NODE_MINOR_VERSION > 10
 # define UNI_BOOLEAN_NEW(value)                                               \
     v8::Boolean::New(args.GetIsolate(), value)
-# define UNI_BUFFER_NEW(size)                                                 \
+# if NODE_MAJOR_VERSION >= 3
+#  define UNI_BUFFER_NEW(size)                                                \
+    node::Buffer::New(args.GetIsolate(), size).ToLocalChecked()
+# else
+#  define UNI_BUFFER_NEW(size)                                                \
     node::Buffer::New(args.GetIsolate(), size)
+# endif  // NODE_MAJOR_VERSION >= 3
 # define UNI_CONST_ARGUMENTS(name)                                            \
     const v8::FunctionCallbackInfo<v8::Value>& name
 # define UNI_ESCAPE(value)                                                    \
