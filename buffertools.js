@@ -23,6 +23,7 @@ var util = require('util');
 try {
 	var buffertools = require('./build/Release/buffertools.node');
 } catch (e) {
+	if (e.code !== 'MODULE_NOT_FOUND') throw e;
 	var buffertools = require('./build/Debug/buffertools.node');
 }
 
