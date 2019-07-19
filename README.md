@@ -2,6 +2,11 @@
 
 Utilities for manipulating buffers.
 
+**Deprecation warning: this module is no longer maintained
+and doesn't work with newer versions of Node.js.
+
+Most functionality is now available through the native `Buffer` class.**
+
 ## Installing the module
 
 Easy! With [npm](http://npmjs.org/):
